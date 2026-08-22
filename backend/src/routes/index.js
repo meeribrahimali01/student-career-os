@@ -12,6 +12,7 @@ const placementRoutes = require("./placement.routes");
 const resumeRoutes = require("./resume.routes");
 const communicationRoutes = require("./communication.routes");
 const dashboardRoutes = require("./dashboard.routes");
+const aiRoutes = require("./ai.routes");
 
 // Mount Module Routers
 router.use("/students", studentRoutes);
@@ -25,5 +26,6 @@ router.use("/placements", placementRoutes);
 router.use("/resumes", resumeRoutes);
 router.use("/communication", communicationRoutes);
 router.use("/dashboard", dashboardRoutes);
+router.use("/ai", aiRoutes);
 
 module.exports = router;

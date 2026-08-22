@@ -57,6 +57,21 @@ class StorageService {
     }
 
     /**
+     * Download a file from Supabase Storage as a Buffer
+     */
+    async downloadFile(bucketName, storagePath) {
+        const { data, error } = await supabase.storage
+            .from(bucketName)
+            .download(storagePath);
+
+        if (error) throw error;
+
+        // Convert Blob to Buffer
+        const arrayBuffer = await data.arrayBuffer();
+        return Buffer.from(arrayBuffer);
+    }
+
+    /**
      * Delete a file from Supabase Storage
      */
     async deleteFile(bucketName, storagePath) {

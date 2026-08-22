@@ -76,9 +76,11 @@ app.use((req, res) => {
 // Central error handler
 app.use(errorMiddleware);
 
-// Start server
-app.listen(PORT, () => {
-    console.log(`CareerOS backend running on http://localhost:${PORT}`);
-});
+// Start server only when executed directly
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`CareerOS backend running on http://localhost:${PORT}`);
+    });
+}
 
 module.exports = app;

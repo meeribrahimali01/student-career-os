@@ -39,7 +39,7 @@ const uploadResume = multer({
 }).single("resume");
 
 /**
- * Express wrapper for handling multer errors cleanly
+ * Express wrapper for handling multer errors cleanly (Required file)
  */
 const handleResumeUpload = (req, res, next) => {
     uploadResume(req, res, (err) => {
@@ -72,6 +72,38 @@ const handleResumeUpload = (req, res, next) => {
     });
 };
 
+/**
+ * Express wrapper for optional resume upload (Accepts multipart file or passes through for JSON)
+ */
+const handleOptionalResumeUpload = (req, res, next) => {
+    const contentType = req.headers["content-type"] || "";
+    if (contentType.includes("multipart/form-data")) {
+        uploadResume(req, res, (err) => {
+            if (err instanceof multer.MulterError) {
+                if (err.code === "LIMIT_FILE_SIZE") {
+                    return res.status(400).json({
+                        success: false,
+                        message: "File size exceeds the 5MB limit.",
+                    });
+                }
+                return res.status(400).json({
+                    success: false,
+                    message: `Upload error: ${err.message}`,
+                });
+            } else if (err) {
+                return res.status(err.statusCode || 400).json({
+                    success: false,
+                    message: err.message || "File upload failed.",
+                });
+            }
+            next();
+        });
+    } else {
+        next();
+    }
+};
+
 module.exports = {
     handleResumeUpload,
+    handleOptionalResumeUpload,
 };

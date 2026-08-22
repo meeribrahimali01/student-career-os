@@ -13,9 +13,9 @@ class AuthService {
                 .from("profiles")
                 .select("id, full_name, email, avatar_url, role, created_at")
                 .eq("id", userId)
-                .single();
+                .maybeSingle();
 
-            if (error && error.code !== "PGRST116") {
+            if (error) {
                 return null;
             }
             return data || null;
@@ -33,9 +33,9 @@ class AuthService {
                 .from("students")
                 .select("id, profile_id, college, course, branch, semester, graduation_year, current_cgpa, placement_status")
                 .eq("profile_id", profileId)
-                .single();
+                .maybeSingle();
 
-            if (error && error.code !== "PGRST116") {
+            if (error) {
                 return null;
             }
             return data || null;
@@ -50,7 +50,7 @@ class AuthService {
     async checkStudentOwnership(user, targetStudentId) {
         if (!user || !user.id) return false;
 
-        // Admin override
+        // Admin and placement officer override
         if (user.profile && (user.profile.role === "admin" || user.profile.role === "placement_officer")) {
             return true;
         }
