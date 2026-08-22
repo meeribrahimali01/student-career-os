@@ -70,8 +70,11 @@ class AIController {
             }
             // Case C: Raw resume text
             else if (req.body.resume_text) {
-                const parsed = await aiService.parseResume({ textContent: req.body.resume_text });
-                return sendSuccess(res, parsed, 200);
+                const parsedData = await aiService.parseResume({ textContent: req.body.resume_text });
+                return sendSuccess(res, {
+                    resume_id: null,
+                    parsed: parsedData,
+                });
             } else {
                 return sendError(res, "Please provide a resume file, a resume_id, or resume_text to parse.", 400);
             }

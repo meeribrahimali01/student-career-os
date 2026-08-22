@@ -13,8 +13,10 @@ const resumeRoutes = require("./resume.routes");
 const communicationRoutes = require("./communication.routes");
 const dashboardRoutes = require("./dashboard.routes");
 const aiRoutes = require("./ai.routes");
+const authRoutes = require("./auth.routes");
 
 // Mount Module Routers
+router.use("/auth", authRoutes);
 router.use("/students", studentRoutes);
 router.use("/academics", academicRoutes);
 router.use("/skills", skillRoutes);

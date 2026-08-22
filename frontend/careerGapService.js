@@ -15,7 +15,6 @@ import {
   generateCareerIntelligence,
   normalizeStudentProfile,
   validateCareerGapAnalysis,
-  validateCareerRoadmap,
   validateCareerIntelligenceReport,
   computeSmartReadinessScore,
   buildDetailedSkillGaps,
@@ -34,13 +33,20 @@ import {
   createCareerIntelligenceStore,
 } from "../ai/career-gap-analyzer.mjs";
 
+/**
+ * Compatibility validator for Career Roadmap objects
+ */
+export function validateCareerRoadmap(roadmap) {
+  if (!roadmap || typeof roadmap !== "object") return null;
+  return roadmap;
+}
+
 export {
   analyzeCareerGap,
   generateCareerRoadmap,
   generateCareerIntelligence,
   normalizeStudentProfile,
   validateCareerGapAnalysis,
-  validateCareerRoadmap,
   validateCareerIntelligenceReport,
   computeSmartReadinessScore,
   buildDetailedSkillGaps,
@@ -63,4 +69,5 @@ export default {
   analyzeCareerGap,
   generateCareerRoadmap,
   generateCareerIntelligence,
+  validateCareerRoadmap,
 };

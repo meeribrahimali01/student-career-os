@@ -15,7 +15,14 @@ const CLIENT_URL = env.CLIENT_URL || "http://localhost:5173";
 // Standard Middlewares
 app.use(
     cors({
-        origin: CLIENT_URL,
+        origin: (origin, callback) => {
+            // Allow requests with no origin (like mobile apps, curl, server-to-server) or any localhost
+            if (!origin || origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:") || origin === CLIENT_URL) {
+                callback(null, true);
+            } else {
+                callback(new Error("Not allowed by CORS"));
+            }
+        },
         credentials: true,
     })
 );
@@ -30,7 +37,7 @@ app.use("/api", createRateLimiter({ windowMs: 60 * 1000, maxRequests: 150 }));
 app.get("/api/health", (req, res) => {
     res.status(200).json({
         success: true,
-        message: "CareerOS backend is running",
+        message: "Meridian backend is running",
     });
 });
 
@@ -51,7 +58,7 @@ app.get("/api/health/supabase", async (req, res) => {
 
         res.status(200).json({
             success: true,
-            message: "CareerOS backend is connected to Supabase",
+            message: "Meridian backend is connected to Supabase",
         });
     } catch (error) {
         res.status(500).json({
@@ -79,7 +86,7 @@ app.use(errorMiddleware);
 // Start server only when executed directly
 if (require.main === module) {
     app.listen(PORT, () => {
-        console.log(`CareerOS backend running on http://localhost:${PORT}`);
+        console.log(`Meridian backend running on http://localhost:${PORT}`);
     });
 }
 

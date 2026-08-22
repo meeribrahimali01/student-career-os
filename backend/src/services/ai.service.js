@@ -13,7 +13,7 @@ const env = require("../config/env");
 class AIService {
     constructor() {
         this.apiKey = env.GEMINI_API_KEY;
-        this.modelName = env.GEMINI_MODEL || "gemini-2.5-flash";
+        this.modelName = env.GEMINI_MODEL || "gemini-3.7-flash";
         this._client = null;
     }
 
@@ -31,6 +31,55 @@ class AIService {
             this._client = new GoogleGenAI({ apiKey: this.apiKey });
         }
         return this._client;
+    }
+
+    /**
+     * Call Gemini generateContent with automatic exponential backoff for transient 503/429 errors
+     */
+    async _generateWithRetry({ contents, config, maxRetries = 2 }) {
+        const client = this.getClient();
+        const candidateModels = [
+            this.modelName || "gemini-3.5-flash",
+            "gemini-3.5-flash",
+            "gemini-3.5-flash-lite",
+            "gemini-3.6-flash",
+            "gemini-3.7-flash",
+        ].filter((m, i, arr) => Boolean(m) && arr.indexOf(m) === i);
+
+        const delays = [1000, 2000, 4000];
+        let lastError = null;
+
+        for (const currentModel of candidateModels) {
+            for (let attempt = 0; attempt <= maxRetries; attempt++) {
+                try {
+                    const response = await client.models.generateContent({
+                        model: currentModel,
+                        contents,
+                        config,
+                    });
+                    return response;
+                } catch (err) {
+                    lastError = err;
+                    const errStr = (err?.message || "").toLowerCase();
+                    const isTransient =
+                        errStr.includes("503") ||
+                        errStr.includes("429") ||
+                        errStr.includes("high demand") ||
+                        errStr.includes("resource_exhausted") ||
+                        errStr.includes("unavailable") ||
+                        errStr.includes("quota");
+
+                    if (isTransient && attempt < maxRetries) {
+                        const delay = delays[attempt] || 1500;
+                        await new Promise((resolve) => setTimeout(resolve, delay));
+                        continue;
+                    }
+                    // Try next candidate model on quota/rate limit error
+                    break;
+                }
+            }
+        }
+        throw lastError;
     }
 
     /**
@@ -61,8 +110,6 @@ class AIService {
      * Extracts structured profile, education, skills, experience, and projects.
      */
     async parseResume({ fileBuffer, mimeType = "application/pdf", textContent = null }) {
-        const client = this.getClient();
-
         const promptText = `
 You are an expert AI Technical Recruiter and Resume Parser.
 Analyze the provided resume document and extract comprehensive structured information.
@@ -148,8 +195,7 @@ Ensure all extracted skill names are standardized.
 
         contents.push({ text: promptText });
 
-        const response = await client.models.generateContent({
-            model: this.modelName,
+        const response = await this._generateWithRetry({
             contents,
             config: {
                 responseMimeType: "application/json",
@@ -171,8 +217,6 @@ Ensure all extracted skill names are standardized.
         targetRole = "Software Engineer",
         resumeData = null,
     }) {
-        const client = this.getClient();
-
         const context = {
             target_role: targetRole,
             student: {
@@ -252,8 +296,7 @@ Constraints:
 - "identified_skills", "missing_skills", "recommended_skills" must be non-null arrays.
 `;
 
-        const response = await client.models.generateContent({
-            model: this.modelName,
+        const response = await this._generateWithRetry({
             contents: [{ text: promptText }],
             config: {
                 responseMimeType: "application/json",
@@ -285,8 +328,6 @@ Constraints:
         studentProfile = {},
         studentSkills = [],
     }) {
-        const client = this.getClient();
-
         const candidateContext = {
             target_role: targetRole,
             interview_type: interviewType,
@@ -331,8 +372,7 @@ Return ONLY a valid JSON object matching this exact schema:
 }
 `;
 
-        const response = await client.models.generateContent({
-            model: this.modelName,
+        const response = await this._generateWithRetry({
             contents: [{ text: promptText }],
             config: {
                 responseMimeType: "application/json",
@@ -352,8 +392,6 @@ Return ONLY a valid JSON object matching this exact schema:
         targetRole = "Software Engineer",
         interviewType = "technical",
     }) {
-        const client = this.getClient();
-
         const promptText = `
 You are an expert Interview Coach.
 Evaluate the following student's response to an interview question.
@@ -383,8 +421,7 @@ Constraints:
 - "score" must be a float between 0.00 and 100.00.
 `;
 
-        const response = await client.models.generateContent({
-            model: this.modelName,
+        const response = await this._generateWithRetry({
             contents: [{ text: promptText }],
             config: {
                 responseMimeType: "application/json",
