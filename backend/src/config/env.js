@@ -1,5 +1,5 @@
 /**
- * Centralized Environment Configuration & Validation for CareerOS Backend
+ * Centralized Environment Configuration & Validation for Meridian Backend
  */
 require("dotenv").config();
 
@@ -12,6 +12,7 @@ const env = {
     GEMINI_API_KEY: process.env.GEMINI_API_KEY,
     GEMINI_MODEL: process.env.GEMINI_MODEL || "gemini-2.5-flash",
     CLIENT_URL: process.env.CLIENT_URL || "http://localhost:5173",
+    ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || process.env.CLIENT_URL || "http://localhost:5173",
     STORAGE_RESUME_BUCKET: process.env.STORAGE_RESUME_BUCKET || "resumes",
 };
 

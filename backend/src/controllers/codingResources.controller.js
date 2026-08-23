@@ -4,10 +4,10 @@ const { sendSuccess, sendError } = require("../utils/response");
 function resolveStudentId(req) {
   if (req.user?.id) return req.user.id;
   if (req.user?.student?.id) return req.user.student.id;
-  if (req.user?.profile?.role === "admin" && (req.query.studentId || req.body.studentId)) {
-    return req.query.studentId || req.body.studentId;
+  if (req.user?.profile?.role === "admin" && (req.query?.studentId || req.body?.studentId)) {
+    return req.query?.studentId || req.body?.studentId;
   }
-  return req.query.studentId || req.body.studentId || "00000000-0000-0000-0000-000000000001";
+  return req.query?.studentId || req.body?.studentId || "00000000-0000-0000-0000-000000000001";
 }
 
 class CodingResourcesController {
