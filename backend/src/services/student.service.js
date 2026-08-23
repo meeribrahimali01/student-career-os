@@ -18,6 +18,108 @@ class StudentService {
         return data;
     }
 
+    async getOrCreateStudentByUserId(userId, userEmail, userFullName) {
+        try {
+            let { data: student } = await supabase
+                .from("students")
+                .select(`
+                    *,
+                    profile:profiles(id, full_name, email, avatar_url, role, created_at)
+                `)
+                .eq("profile_id", userId)
+                .maybeSingle();
+
+            if (!student) {
+                // Ensure profile exists
+                await supabase.from("profiles").upsert({
+                    id: userId,
+                    email: userEmail,
+                    full_name: userFullName || userEmail.split("@")[0],
+                    role: "student",
+                });
+
+                // Create initial student record
+                const { data: newStudent } = await supabase
+                    .from("students")
+                    .insert({
+                        profile_id: userId,
+                        college: "VIT Chennai",
+                        course: "B.Tech",
+                        branch: "Computer Science & Engineering",
+                        semester: 5,
+                        graduation_year: 2026,
+                        current_cgpa: 0.0,
+                        placement_status: "seeking",
+                    })
+                    .select(`
+                        *,
+                        profile:profiles(id, full_name, email, avatar_url, role, created_at)
+                    `)
+                    .single();
+
+                student = newStudent;
+            }
+
+            return student;
+        } catch (e) {
+            console.warn("[StudentService] Error resolving student:", e.message);
+            return {
+                id: userId,
+                profile_id: userId,
+                college: "VIT Chennai",
+                course: "B.Tech",
+                branch: "Computer Science & Engineering",
+                semester: 5,
+                graduation_year: 2026,
+                current_cgpa: 0.0,
+                placement_status: "seeking",
+                profile: {
+                    id: userId,
+                    email: userEmail,
+                    full_name: userFullName || userEmail?.split("@")[0] || "Student",
+                },
+            };
+        }
+    }
+
+    async updateProfileAndStudent(userId, { fullName, rollNumber, college, branch, semester, cgpa, targetRole, targetCompanies, skills, githubUrl, linkedinUrl, leetcodeProfile }) {
+        try {
+            if (fullName) {
+                await supabase
+                    .from("profiles")
+                    .update({ full_name: fullName })
+                    .eq("id", userId);
+            }
+
+            const studentUpdate = {};
+            if (college !== undefined) studentUpdate.college = college;
+            if (branch !== undefined) studentUpdate.branch = branch;
+            if (semester !== undefined) studentUpdate.semester = semester;
+            if (cgpa !== undefined) studentUpdate.current_cgpa = cgpa;
+            if (targetRole || targetCompanies || githubUrl || linkedinUrl || leetcodeProfile) {
+                studentUpdate.career_preferences = {
+                    targetRole,
+                    targetCompanies,
+                    githubUrl,
+                    linkedinUrl,
+                    leetcodeProfile,
+                    rollNumber,
+                };
+            }
+
+            if (Object.keys(studentUpdate).length > 0) {
+                await supabase
+                    .from("students")
+                    .update(studentUpdate)
+                    .eq("profile_id", userId);
+            }
+        } catch (e) {
+            console.warn("[StudentService] Profile update warning:", e.message);
+        }
+
+        return this.getOrCreateStudentByUserId(userId);
+    }
+
     async updateStudent(id, updateData) {
         const allowedFields = [
             "college",

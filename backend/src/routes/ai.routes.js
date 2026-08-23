@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const aiController = require("../controllers/ai.controller");
-const { authenticate } = require("../middleware/auth.middleware");
+const { authenticate, optionalAuthenticate } = require("../middleware/auth.middleware");
 const { handleOptionalResumeUpload } = require("../middleware/upload.middleware");
 const { createRateLimiter } = require("../middleware/rateLimit.middleware");
 
@@ -13,18 +13,17 @@ const aiRateLimiter = createRateLimiter({
 });
 
 router.use(aiRateLimiter);
-router.use(authenticate);
 
-// 1. AI Resume Parser
-router.post("/resume/parse", handleOptionalResumeUpload, aiController.parseResume);
+// 1. AI Resume Parser (Authenticated)
+router.post("/resume/parse", authenticate, handleOptionalResumeUpload, aiController.parseResume);
 
-// 2. AI Skill Gap Analyzer
-router.post("/skill-gap", aiController.analyzeSkillGap);
+// 2. AI Skill Gap Analyzer (Authenticated)
+router.post("/skill-gap", authenticate, aiController.analyzeSkillGap);
 
-// 3. AI Mock Interview Question Generator
-router.post("/interview/generate", aiController.generateMockInterview);
+// 3. AI Mock Interview Question Generator (Supports Authenticated and Optional)
+router.post("/interview/generate", optionalAuthenticate, aiController.generateMockInterview);
 
-// 4. AI Interview Answer Evaluator
-router.post("/interview/evaluate", aiController.evaluateInterviewAnswer);
+// 4. AI Interview Answer Evaluator (Supports Authenticated and Optional)
+router.post("/interview/evaluate", optionalAuthenticate, aiController.evaluateInterviewAnswer);
 
 module.exports = router;

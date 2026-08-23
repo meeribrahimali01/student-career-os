@@ -13,11 +13,10 @@ import {
   TrendingUp,
   Target,
   Plus,
-  Trash2,
-  ArrowRight,
   ShieldCheck,
 } from "lucide-react";
 import { ProductivityTask, NextBestAction } from "../../data/studentIntelligence";
+import { GlassSurface, GlassButton, GlassBadge } from "./ui/LiquidGlass";
 
 interface ProductivityCoachProps {
   studyStreakDays: number;
@@ -34,9 +33,6 @@ export default function ProductivityCoach({
   focusScore,
   todayStudyMinutes,
   targetDailyMinutes,
-  nextBestActions,
-  onCompleteAction,
-  onLaunchRoadmapQuiz,
 }: ProductivityCoachProps) {
   // Pomodoro Focus Timer State
   const [timerSeconds, setTimerSeconds] = useState(25 * 60);
@@ -109,183 +105,187 @@ export default function ProductivityCoach({
   return (
     <div className="space-y-6">
       {/* ══════════════════════════════════════════════════════════════ */}
-      {/* 1. TOP METRICS & PROCRASTINATION INTELLIGENCE RADAR            */}
+      {/* 1. TOP METRICS                                                 */}
       {/* ══════════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Streak */}
-        <div className="bg-card border border-border p-5 rounded-2xl shadow-xs flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
-            <Flame size={22} className="animate-pulse" />
+        <GlassSurface level={2} className="p-4.5 flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-[#FAF2EB] dark:bg-[#28211A] text-[#8C532B] dark:text-[#D49E78] flex items-center justify-center flex-shrink-0">
+            <Flame size={20} className="text-[#8C532B]" />
           </div>
           <div>
-            <span className="text-[10px] font-bold text-muted-foreground uppercase">Study Streak</span>
-            <div className="text-xl font-black text-foreground font-mono">{studyStreakDays} Days 🔥</div>
-            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">Active Daily Habit</span>
+            <span className="text-[9px] font-bold text-[#556B5F] dark:text-[#95AFA1] uppercase">Study Streak</span>
+            <div className="text-xl font-bold text-[#1C2E24] dark:text-[#F4F7F5] font-mono">{studyStreakDays} Days</div>
+            <span className="text-[10px] text-[#4E7D63] dark:text-[#6E9B82] font-medium">Active Daily Habit</span>
           </div>
-        </div>
+        </GlassSurface>
 
         {/* Focus Score */}
-        <div className="bg-card border border-border p-5 rounded-2xl shadow-xs flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-            <Zap size={22} />
+        <GlassSurface level={2} className="p-4.5 flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-[#EDF4F0] dark:bg-[#1E2F26] text-[#4E7D63] dark:text-[#6E9B82] flex items-center justify-center flex-shrink-0">
+            <Zap size={20} />
           </div>
           <div>
-            <span className="text-[10px] font-bold text-muted-foreground uppercase">Focus Score</span>
-            <div className="text-xl font-black text-foreground font-mono">{focusScore}/100</div>
-            <span className="text-[10px] text-primary font-semibold">Top 10% Consistency</span>
+            <span className="text-[9px] font-bold text-[#556B5F] dark:text-[#95AFA1] uppercase">Focus Score</span>
+            <div className="text-xl font-bold text-[#1C2E24] dark:text-[#F4F7F5] font-mono">{focusScore}/100</div>
+            <span className="text-[10px] text-[#4E7D63] dark:text-[#6E9B82] font-medium">Top 10% Consistency</span>
           </div>
-        </div>
+        </GlassSurface>
 
         {/* Daily Time Target */}
-        <div className="bg-card border border-border p-5 rounded-2xl shadow-xs flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-            <Clock size={22} />
+        <GlassSurface level={2} className="p-4.5 flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-[#EDF4F0] dark:bg-[#1E2F26] text-[#3B624E] dark:text-[#8EB7A0] flex items-center justify-center flex-shrink-0">
+            <Clock size={20} />
           </div>
           <div>
-            <span className="text-[10px] font-bold text-muted-foreground uppercase">Daily Study Time</span>
-            <div className="text-xl font-black text-foreground font-mono">
+            <span className="text-[9px] font-bold text-[#556B5F] dark:text-[#95AFA1] uppercase">Daily Study Time</span>
+            <div className="text-xl font-bold text-[#1C2E24] dark:text-[#F4F7F5] font-mono">
               {todayStudyMinutes}m / {targetDailyMinutes}m
             </div>
-            <span className="text-[10px] text-muted-foreground font-semibold">{progressPct}% of Daily Goal</span>
+            <span className="text-[10px] text-[#556B5F] dark:text-[#95AFA1] font-medium">{progressPct}% of Daily Goal</span>
           </div>
-        </div>
+        </GlassSurface>
 
         {/* Focus Sprints Completed */}
-        <div className="bg-card border border-border p-5 rounded-2xl shadow-xs flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center">
-            <ShieldCheck size={22} />
+        <GlassSurface level={2} className="p-4.5 flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-[#FAF8F5] dark:bg-[#17241D] text-[#1C2E24] dark:text-[#F4F7F5] border border-[rgba(28,46,36,0.1)] flex items-center justify-center flex-shrink-0">
+            <ShieldCheck size={20} className="text-[#4E7D63]" />
           </div>
           <div>
-            <span className="text-[10px] font-bold text-muted-foreground uppercase">Pomodoros Done</span>
-            <div className="text-xl font-black text-foreground font-mono">{completedSessionsToday} Sprints</div>
-            <span className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold">+75m Deep Focus</span>
+            <span className="text-[9px] font-bold text-[#556B5F] dark:text-[#95AFA1] uppercase">Pomodoros Done</span>
+            <div className="text-xl font-bold text-[#1C2E24] dark:text-[#F4F7F5] font-mono">{completedSessionsToday} Sprints</div>
+            <span className="text-[10px] text-[#4E7D63] dark:text-[#6E9B82] font-medium">+75m Deep Focus</span>
           </div>
-        </div>
+        </GlassSurface>
       </div>
 
       {/* ══════════════════════════════════════════════════════════════ */}
-      {/* 2. AI PROCRASTINATION COACH ALERTS & BEHAVIORAL INSIGHTS       */}
+      {/* 2. BEHAVIORAL PRODUCTIVITY TELEMETRY                           */}
       {/* ══════════════════════════════════════════════════════════════ */}
-      <div className="bg-card border border-border rounded-2xl p-6 shadow-xs space-y-4">
+      <GlassSurface level={2} className="p-5 space-y-3.5">
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 flex items-center gap-1">
-            <Sparkles size={12} />
-            Behavioral Productivity Telemetry
-          </span>
-          <span className="text-xs text-muted-foreground">Automated Habit Pattern Recognition</span>
+          <GlassBadge
+            label="Behavioral Productivity Telemetry"
+            variant="primary"
+            icon={<Sparkles size={11} className="text-[#4E7D63]" />}
+          />
+          <span className="text-xs text-[#556B5F] dark:text-[#95AFA1] font-mono">Automated Pattern Recognition</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="bg-amber-500/10 border border-amber-500/20 p-3.5 rounded-xl text-xs space-y-1">
-            <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-bold">
-              <AlertTriangle size={14} />
+          <div className="bg-[#FAF2EB] dark:bg-[#28211A] border border-[rgba(140,83,43,0.25)] p-3.5 rounded-xl text-xs space-y-1">
+            <div className="flex items-center gap-1.5 text-[#8C532B] dark:text-[#D49E78] font-bold">
+              <AlertTriangle size={13} />
               <span>Procrastination Pattern Detected</span>
             </div>
-            <p className="text-foreground font-semibold">Graph Algorithms Revision Overdue</p>
-            <p className="text-[11px] text-muted-foreground leading-tight">
-              You planned 3 hours of DSA this week but completed 45 minutes. Start with a quick 15-minute concept review to overcome inertia.
+            <p className="text-[#1C2E24] dark:text-[#F4F7F5] font-semibold">Graph Algorithms Revision Overdue</p>
+            <p className="text-[10px] text-[#556B5F] dark:text-[#95AFA1] leading-relaxed">
+              Planned 3h of DSA this week with 45m done. Start with a 15-minute concept review to overcome inertia.
             </p>
           </div>
 
-          <div className="bg-emerald-500/10 border border-emerald-500/20 p-3.5 rounded-xl text-xs space-y-1">
-            <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold">
-              <TrendingUp size={14} />
+          <div className="bg-[#EDF4F0] dark:bg-[#1E2F26] border border-[rgba(78,125,99,0.25)] p-3.5 rounded-xl text-xs space-y-1">
+            <div className="flex items-center gap-1.5 text-[#3B624E] dark:text-[#8EB7A0] font-bold">
+              <TrendingUp size={13} />
               <span>Peak Focus Efficiency Window</span>
             </div>
-            <p className="text-foreground font-semibold">Evening Block (6:30 PM - 9:00 PM)</p>
-            <p className="text-[11px] text-muted-foreground leading-tight">
-              Your historical quiz accuracy is 18% higher during evening sessions. Schedule complex System Design study here.
+            <p className="text-[#1C2E24] dark:text-[#F4F7F5] font-semibold">Evening Block (6:30 PM - 9:00 PM)</p>
+            <p className="text-[10px] text-[#556B5F] dark:text-[#95AFA1] leading-relaxed">
+              Historical accuracy is 18% higher during evening sessions. Schedule complex System Design study here.
             </p>
           </div>
 
-          <div className="bg-primary/10 border border-primary/20 p-3.5 rounded-xl text-xs space-y-1">
-            <div className="flex items-center gap-1.5 text-primary font-bold">
-              <Target size={14} />
+          <div className="bg-[#EDF4F0] dark:bg-[#1E2F26] border border-[rgba(78,125,99,0.25)] p-3.5 rounded-xl text-xs space-y-1">
+            <div className="flex items-center gap-1.5 text-[#4E7D63] dark:text-[#6E9B82] font-bold">
+              <Target size={13} />
               <span>Next-Best-Action Recommendation</span>
             </div>
-            <p className="text-foreground font-semibold">Solve 3 Dijkstra Practice MCQs</p>
-            <p className="text-[11px] text-muted-foreground leading-tight">
+            <p className="text-[#1C2E24] dark:text-[#F4F7F5] font-semibold">Solve 3 Dijkstra Practice MCQs</p>
+            <p className="text-[10px] text-[#556B5F] dark:text-[#95AFA1] leading-relaxed">
               Completing this practice session will boost your Graph Mastery from 42% to 60%.
             </p>
           </div>
         </div>
-      </div>
+      </GlassSurface>
 
       {/* ══════════════════════════════════════════════════════════════ */}
       {/* 3. POMODORO FOCUS TIMER & SMART DAILY PLANNER                  */}
       {/* ══════════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Pomodoro Stopwatch (5 Columns) */}
-        <div className="lg:col-span-5 bg-card border border-border rounded-2xl p-6 shadow-xs flex flex-col justify-between items-center text-center space-y-5">
-          <div className="space-y-1">
-            <h3 className="text-sm font-bold text-foreground">Deep Work Focus Sprint</h3>
-            <p className="text-[11px] text-muted-foreground">Block distractions and build intense learning momentum</p>
+        <GlassSurface level={3} className="lg:col-span-5 p-6 flex flex-col justify-between items-center text-center space-y-5">
+          <div className="space-y-0.5">
+            <h3 className="text-base font-bold text-[#1C2E24] dark:text-[#F4F7F5] tracking-tight">Deep Work Focus Instrument</h3>
+            <p className="text-xs text-[#556B5F] dark:text-[#95AFA1]">Build intense learning momentum with distraction-free intervals</p>
           </div>
 
           {/* Mode Switcher */}
-          <div className="flex items-center gap-1.5 bg-secondary p-1 rounded-xl">
+          <div className="flex items-center gap-1 bg-[#EAE6DE] dark:bg-[#142019] p-1 rounded-xl border border-[rgba(28,46,36,0.08)]">
             <button
               onClick={() => handleSetMode("work")}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                timerMode === "work" ? "bg-primary text-white shadow-xs" : "text-muted-foreground hover:text-foreground"
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                timerMode === "work" ? "bg-[#1C2E24] dark:bg-[#4E7D63] text-[#FBFBF9] shadow-2xs" : "text-[#556B5F] hover:text-[#1C2E24]"
               }`}
             >
               Focus 25m
             </button>
             <button
               onClick={() => handleSetMode("short_break")}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                timerMode === "short_break" ? "bg-primary text-white shadow-xs" : "text-muted-foreground hover:text-foreground"
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                timerMode === "short_break" ? "bg-[#1C2E24] dark:bg-[#4E7D63] text-[#FBFBF9] shadow-2xs" : "text-[#556B5F] hover:text-[#1C2E24]"
               }`}
             >
-              Short Break 5m
+              Break 5m
             </button>
             <button
               onClick={() => handleSetMode("long_break")}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                timerMode === "long_break" ? "bg-primary text-white shadow-xs" : "text-muted-foreground hover:text-foreground"
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                timerMode === "long_break" ? "bg-[#1C2E24] dark:bg-[#4E7D63] text-[#FBFBF9] shadow-2xs" : "text-[#556B5F] hover:text-[#1C2E24]"
               }`}
             >
-              Long Break 15m
+              Long 15m
             </button>
           </div>
 
-          {/* Giant Digital Clock */}
-          <div className="relative py-4">
-            <span className="text-6xl font-black text-foreground font-mono tracking-tight">
+          {/* Clock Display */}
+          <div className="relative py-2">
+            <span className="text-6xl font-bold text-[#1C2E24] dark:text-[#F4F7F5] font-mono tracking-tight">
               {formatTime(timerSeconds)}
             </span>
           </div>
 
           {/* Timer Controls */}
-          <div className="flex items-center gap-3">
-            <button
+          <div className="flex items-center gap-2.5">
+            <GlassButton
+              variant="primary"
+              size="lg"
               onClick={() => setIsRunning((prev) => !prev)}
-              className="px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-primary hover:opacity-95 shadow-md flex items-center gap-2 transition-all cursor-pointer"
             >
               {isRunning ? <Pause size={14} /> : <Play size={14} fill="currentColor" />}
               <span>{isRunning ? "Pause Sprint" : "Start Focus"}</span>
-            </button>
+            </GlassButton>
+
             <button
               onClick={() => handleSetMode(timerMode)}
-              className="w-9 h-9 rounded-xl bg-secondary hover:bg-secondary/80 border border-border flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+              className="w-9 h-9 rounded-xl bg-[#FAF8F5] dark:bg-[#17241D] hover:bg-[#EAE6DE] border border-[rgba(28,46,36,0.1)] flex items-center justify-center text-[#556B5F] hover:text-[#1C2E24] cursor-pointer transition-colors"
               title="Reset Timer"
             >
-              <RotateCcw size={15} />
+              <RotateCcw size={14} />
             </button>
           </div>
-        </div>
+        </GlassSurface>
 
         {/* Smart Daily Task Planner (7 Columns) */}
-        <div className="lg:col-span-7 bg-card border border-border rounded-2xl p-6 shadow-xs flex flex-col justify-between space-y-4">
-          <div className="flex items-center justify-between">
+        <GlassSurface level={2} className="lg:col-span-7 p-5 flex flex-col justify-between space-y-3.5">
+          <div className="flex items-center justify-between pb-1">
             <div>
-              <h3 className="text-sm font-bold text-foreground">Smart Daily Priority Tasks</h3>
-              <p className="text-[11px] text-muted-foreground">Auto-generated from your weak topics & revision alerts</p>
+              <h3 className="text-sm font-bold text-[#1C2E24] dark:text-[#F4F7F5]">Smart Daily Priority Tasks</h3>
+              <p className="text-[11px] text-[#556B5F] dark:text-[#95AFA1]">Auto-generated from weak topics & revision alerts</p>
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-primary/10 text-primary">
-              {dailyTasks.filter((t) => t.completed).length}/{dailyTasks.length} Completed
-            </span>
+            <GlassBadge
+              label={`${dailyTasks.filter((t) => t.completed).length}/${dailyTasks.length} Done`}
+              variant="success"
+            />
           </div>
 
           {/* Add Task Input */}
@@ -295,56 +295,48 @@ export default function ProductivityCoach({
               value={newTaskInput}
               onChange={(e) => setNewTaskInput(e.target.value)}
               placeholder="Add custom task or revision note..."
-              className="flex-1 bg-secondary border border-border rounded-xl px-3 py-1.5 text-xs outline-none focus:border-primary text-foreground"
+              className="flex-1 bg-[#FAF8F5] dark:bg-[#17241D] border border-[rgba(28,46,36,0.1)] rounded-xl px-3.5 py-1.5 text-xs outline-none focus:border-[#4E7D63] text-[#1C2E24] dark:text-[#F4F7F5] placeholder:text-[#7C9184]"
             />
-            <button
-              type="submit"
-              className="px-3.5 py-1.5 rounded-xl bg-primary text-white text-xs font-bold flex items-center gap-1 cursor-pointer"
-            >
-              <Plus size={13} />
+            <GlassButton variant="primary" size="sm" type="submit">
+              <Plus size={12} />
               <span>Add</span>
-            </button>
+            </GlassButton>
           </form>
 
           {/* Task List */}
-          <div className="space-y-2 max-h-60 overflow-y-auto no-scroll pr-1">
+          <div className="space-y-1.5 max-h-60 overflow-y-auto no-scroll pr-0.5">
             {dailyTasks.map((task) => (
               <div
                 key={task.id}
                 onClick={() => handleToggleTask(task.id)}
-                className={`p-3 rounded-xl border text-xs flex items-center justify-between transition-all cursor-pointer ${
+                className={`p-2.5 rounded-xl border text-xs flex items-center justify-between transition-all cursor-pointer ${
                   task.completed
-                    ? "bg-secondary/40 border-border/50 text-muted-foreground line-through"
-                    : "bg-card hover:bg-secondary/60 border-border text-foreground"
+                    ? "bg-[#FAF8F5]/60 dark:bg-[#17241D]/40 border-[rgba(28,46,36,0.04)] text-[#7C9184] line-through opacity-70"
+                    : "bg-[#FAF8F5] dark:bg-[#17241D] hover:bg-[#FAF8F5] border-[rgba(28,46,36,0.08)] text-[#1C2E24] dark:text-[#F4F7F5]"
                 }`}
               >
                 <div className="flex items-center gap-2.5">
                   {task.completed ? (
-                    <CheckCircle2 size={16} className="text-emerald-500 flex-shrink-0" />
+                    <CheckCircle2 size={16} className="text-[#4E7D63] flex-shrink-0" />
                   ) : (
-                    <Circle size={16} className="text-muted-foreground flex-shrink-0" />
+                    <Circle size={16} className="text-[#7C9184] flex-shrink-0" />
                   )}
                   <div>
                     <span className="font-semibold block">{task.title}</span>
-                    <span className="text-[10px] opacity-70">
+                    <span className="text-[10px] text-[#556B5F] dark:text-[#95AFA1]">
                       {task.category} • ~{task.durationMinutes} mins
                     </span>
                   </div>
                 </div>
 
-                <span
-                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                    task.priority === "High"
-                      ? "bg-rose-500/10 text-rose-600 dark:text-rose-400"
-                      : "bg-secondary text-muted-foreground"
-                  }`}
-                >
-                  {task.priority}
-                </span>
+                <GlassBadge
+                  label={task.priority}
+                  variant={task.priority === "High" ? "danger" : "default"}
+                />
               </div>
             ))}
           </div>
-        </div>
+        </GlassSurface>
       </div>
     </div>
   );

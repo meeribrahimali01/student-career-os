@@ -1,24 +1,18 @@
 import React, { useState } from "react";
 import {
-  User,
-  GraduationCap,
-  Briefcase,
-  Award,
-  Code2,
-  ExternalLink,
   ShieldCheck,
   CheckCircle2,
+  ExternalLink,
+  Briefcase,
   Edit3,
   Save,
-  Plus,
-  Trash2,
-  Sparkles,
 } from "lucide-react";
 import { StudentProfileData } from "../../data/studentIntelligence";
+import { GlassSurface, GlassButton, GlassBadge } from "./ui/LiquidGlass";
 
 interface StudentProfileProps {
   profile: StudentProfileData;
-  onUpdateProfile: (updated: StudentProfileData) => void;
+  onUpdateProfile?: (updated: StudentProfileData) => void;
 }
 
 export default function StudentProfile({ profile, onUpdateProfile }: StudentProfileProps) {
@@ -27,167 +21,163 @@ export default function StudentProfile({ profile, onUpdateProfile }: StudentProf
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    onUpdateProfile(formData);
     setIsEditing(false);
+    onUpdateProfile?.(formData);
   };
 
   const getProficiencyLabel = (level: number) => {
-    if (level >= 85) return { label: "Expert", color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" };
-    if (level >= 70) return { label: "Advanced", color: "text-indigo-500 bg-indigo-500/10 border-indigo-500/20" };
-    if (level >= 50) return { label: "Intermediate", color: "text-blue-500 bg-blue-500/10 border-blue-500/20" };
-    return { label: "Beginner", color: "text-amber-500 bg-amber-500/10 border-amber-500/20" };
+    if (level >= 85) return { label: "Advanced", color: "bg-[#EDF4F0] text-[#3B624E] border-[rgba(78,125,99,0.3)]" };
+    if (level >= 65) return { label: "Proficient", color: "bg-[#F2EFE9] text-[#1C2E24] border-[rgba(28,46,36,0.15)]" };
+    return { label: "Developing", color: "bg-[#FAF2EB] text-[#8C532B] border-[rgba(140,83,43,0.3)]" };
   };
 
   return (
     <div className="space-y-6">
       {/* ══════════════════════════════════════════════════════════════ */}
-      {/* 1. TOP STUDENT IDENTITY CARD                                   */}
+      {/* 1. TOP STUDENT IDENTITY SURFACE                                */}
       {/* ══════════════════════════════════════════════════════════════ */}
-      <div className="bg-card border border-border rounded-2xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <GlassSurface level={2} className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-5">
         <div className="flex items-center gap-4">
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-md flex-shrink-0"
-            style={{ background: "linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)" }}
-          >
-            {formData.name.slice(0, 1)}
+          <div className="w-14 h-14 rounded-xl flex items-center justify-center text-[#FBFBF9] bg-[#1C2E24] dark:bg-[#203429] text-xl font-bold shadow-xs flex-shrink-0">
+            <span>{formData.name.slice(0, 1)}</span>
           </div>
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-black text-foreground">{formData.name}</h1>
-              <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
-                Verified Student
-              </span>
+              <h1 className="text-lg font-bold text-[#1C2E24] dark:text-[#F4F7F5]">{formData.name}</h1>
+              <GlassBadge label="Verified Student" variant="primary" icon={<ShieldCheck size={11} className="text-[#4E7D63]" />} />
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-[#556B5F] dark:text-[#95AFA1] font-mono">
               {formData.rollNumber} • {formData.branch} • Semester {formData.semester}
             </p>
-            <p className="text-xs font-medium text-foreground">{formData.college}</p>
+            <p className="text-xs font-semibold text-[#1C2E24] dark:text-[#F4F7F5]">{formData.college}</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <button
+          <GlassButton
+            variant="secondary"
+            size="sm"
             onClick={() => setIsEditing((prev) => !prev)}
-            className="px-4 py-2 rounded-xl text-xs font-bold bg-secondary hover:bg-secondary/80 border border-border text-foreground flex items-center gap-1.5 transition-all cursor-pointer"
           >
             <Edit3 size={13} />
             <span>{isEditing ? "Cancel" : "Edit Profile"}</span>
-          </button>
+          </GlassButton>
         </div>
-      </div>
+      </GlassSurface>
 
       {/* ══════════════════════════════════════════════════════════════ */}
       {/* 2. EDIT FORM OR PROFILE DETAILS                                */}
       {/* ══════════════════════════════════════════════════════════════ */}
       {isEditing ? (
-        <form onSubmit={handleSave} className="bg-card border border-border rounded-2xl p-6 shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b border-border pb-3">
-            <h3 className="text-sm font-bold text-foreground">Edit Student Profile Details</h3>
-            <button
-              type="submit"
-              className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
-            >
-              <Save size={13} />
-              <span>Save Changes</span>
-            </button>
-          </div>
+        <GlassSurface level={3} className="p-5 space-y-3.5">
+          <form onSubmit={handleSave} className="space-y-3.5">
+            <div className="flex items-center justify-between border-b border-[rgba(28,46,36,0.08)] pb-2.5">
+              <h3 className="text-sm font-bold text-[#1C2E24] dark:text-[#F4F7F5]">Edit Student Profile Details</h3>
+              <GlassButton
+                type="submit"
+                variant="primary"
+                size="sm"
+              >
+                <Save size={13} />
+                <span>Save Changes</span>
+              </GlassButton>
+            </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            <div className="space-y-1">
-              <label className="text-muted-foreground font-bold">Full Name</label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full bg-secondary border border-border rounded-xl px-3 py-2 outline-none focus:border-primary text-foreground font-semibold"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div className="space-y-1">
+                <label className="text-[#556B5F] font-semibold">Full Name</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full bg-[#FAF8F5] dark:bg-[#1D2D24] border border-[rgba(28,46,36,0.1)] rounded-xl px-3 py-1.5 outline-none focus:border-[#4E7D63] text-[#1C2E24] dark:text-[#F4F7F5]"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[#556B5F] font-semibold">Email Address</label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full bg-[#FAF8F5] dark:bg-[#1D2D24] border border-[rgba(28,46,36,0.1)] rounded-xl px-3 py-1.5 outline-none focus:border-[#4E7D63] text-[#1C2E24] dark:text-[#F4F7F5]"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[#556B5F] font-semibold">Target Career Goal</label>
+                <input
+                  type="text"
+                  value={formData.targetRole}
+                  onChange={(e) => setFormData({ ...formData, targetRole: e.target.value })}
+                  className="w-full bg-[#FAF8F5] dark:bg-[#1D2D24] border border-[rgba(28,46,36,0.1)] rounded-xl px-3 py-1.5 outline-none focus:border-[#4E7D63] text-[#1C2E24] dark:text-[#F4F7F5]"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[#556B5F] font-semibold">GitHub Profile URL</label>
+                <input
+                  type="text"
+                  value={formData.githubUrl}
+                  onChange={(e) => setFormData({ ...formData, githubUrl: e.target.value })}
+                  className="w-full bg-[#FAF8F5] dark:bg-[#1D2D24] border border-[rgba(28,46,36,0.1)] rounded-xl px-3 py-1.5 outline-none focus:border-[#4E7D63] text-[#1C2E24] dark:text-[#F4F7F5]"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[#556B5F] font-semibold">LinkedIn URL</label>
+                <input
+                  type="text"
+                  value={formData.linkedinUrl}
+                  onChange={(e) => setFormData({ ...formData, linkedinUrl: e.target.value })}
+                  className="w-full bg-[#FAF8F5] dark:bg-[#1D2D24] border border-[rgba(28,46,36,0.1)] rounded-xl px-3 py-1.5 outline-none focus:border-[#4E7D63] text-[#1C2E24] dark:text-[#F4F7F5]"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[#556B5F] font-semibold">LeetCode Profile URL</label>
+                <input
+                  type="text"
+                  value={formData.leetcodeProfile}
+                  onChange={(e) => setFormData({ ...formData, leetcodeProfile: e.target.value })}
+                  className="w-full bg-[#FAF8F5] dark:bg-[#1D2D24] border border-[rgba(28,46,36,0.1)] rounded-xl px-3 py-1.5 outline-none focus:border-[#4E7D63] text-[#1C2E24] dark:text-[#F4F7F5]"
+                />
+              </div>
             </div>
-            <div className="space-y-1">
-              <label className="text-muted-foreground font-bold">Email Address</label>
-              <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full bg-secondary border border-border rounded-xl px-3 py-2 outline-none focus:border-primary text-foreground font-semibold"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-muted-foreground font-bold">Target Career Goal</label>
-              <input
-                type="text"
-                value={formData.targetRole}
-                onChange={(e) => setFormData({ ...formData, targetRole: e.target.value })}
-                className="w-full bg-secondary border border-border rounded-xl px-3 py-2 outline-none focus:border-primary text-foreground font-semibold"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-muted-foreground font-bold">GitHub Profile URL</label>
-              <input
-                type="text"
-                value={formData.githubUrl}
-                onChange={(e) => setFormData({ ...formData, githubUrl: e.target.value })}
-                className="w-full bg-secondary border border-border rounded-xl px-3 py-2 outline-none focus:border-primary text-foreground font-semibold"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-muted-foreground font-bold">LinkedIn URL</label>
-              <input
-                type="text"
-                value={formData.linkedinUrl}
-                onChange={(e) => setFormData({ ...formData, linkedinUrl: e.target.value })}
-                className="w-full bg-secondary border border-border rounded-xl px-3 py-2 outline-none focus:border-primary text-foreground font-semibold"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-muted-foreground font-bold">LeetCode Profile URL</label>
-              <input
-                type="text"
-                value={formData.leetcodeProfile}
-                onChange={(e) => setFormData({ ...formData, leetcodeProfile: e.target.value })}
-                className="w-full bg-secondary border border-border rounded-xl px-3 py-2 outline-none focus:border-primary text-foreground font-semibold"
-              />
-            </div>
-          </div>
-        </form>
+          </form>
+        </GlassSurface>
       ) : null}
 
       {/* ══════════════════════════════════════════════════════════════ */}
       {/* 3. VERIFIED TECHNICAL SKILL PROFICIENCY MAP                    */}
       {/* ══════════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Technical Skills Map (7 Columns) */}
-        <div className="lg:col-span-7 bg-card border border-border rounded-2xl p-6 shadow-xs space-y-4">
+        <GlassSurface level={2} className="lg:col-span-7 p-5 space-y-3.5">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-bold text-foreground">Verified Skill Competency Map</h3>
-              <p className="text-[11px] text-muted-foreground">Proficiency scores derived from assessments and coursework</p>
+              <h3 className="text-sm font-bold text-[#1C2E24] dark:text-[#F4F7F5]">Verified Skill Competency Map</h3>
+              <p className="text-[11px] text-[#556B5F] dark:text-[#95AFA1]">Proficiency scores derived from assessments and coursework</p>
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-primary/10 text-primary">
-              {formData.skills.length} Tracked Skills
-            </span>
+            <GlassBadge label={`${formData.skills.length} Tracked Skills`} variant="primary" />
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {formData.skills.map((skill, idx) => {
               const prof = getProficiencyLabel(skill.level);
               return (
-                <div key={idx} className="space-y-1.5">
+                <div key={idx} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-foreground">{skill.name}</span>
-                      {skill.verified && <CheckCircle2 size={12} className="text-emerald-500" />}
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-[#1C2E24] dark:text-[#F4F7F5]">{skill.name}</span>
+                      {skill.verified && <CheckCircle2 size={12} className="text-[#4E7D63]" />}
                     </div>
                     <div className="flex items-center gap-2 font-mono">
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${prof.color}`}>
+                      <span className={`text-[9px] font-semibold px-1.5 py-0.2 rounded border ${prof.color}`}>
                         {prof.label}
                       </span>
-                      <span className="font-bold text-foreground">{skill.level}%</span>
+                      <span className="font-bold text-[#1C2E24] dark:text-[#F4F7F5]">{skill.level}%</span>
                     </div>
                   </div>
 
-                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                  <div className="h-2 bg-[#E8E4DC] dark:bg-[#1D2E24] rounded-full overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-primary transition-all duration-500"
+                      className="h-full rounded-full bg-[#4E7D63] transition-all duration-300"
                       style={{ width: `${skill.level}%` }}
                     />
                   </div>
@@ -195,68 +185,66 @@ export default function StudentProfile({ profile, onUpdateProfile }: StudentProf
               );
             })}
           </div>
-        </div>
+        </GlassSurface>
 
         {/* Academic Profile & Links (5 Columns) */}
-        <div className="lg:col-span-5 bg-card border border-border rounded-2xl p-6 shadow-xs space-y-4 flex flex-col justify-between">
-          <div className="space-y-3.5">
+        <GlassSurface level={2} className="lg:col-span-5 p-5 space-y-3.5 flex flex-col justify-between">
+          <div className="space-y-3">
             <div>
-              <h3 className="text-sm font-bold text-foreground">Academic Standing & Portfolios</h3>
-              <p className="text-[11px] text-muted-foreground">External professional profiles & credentials</p>
+              <h3 className="text-sm font-bold text-[#1C2E24] dark:text-[#F4F7F5]">Academic Standing & Portfolios</h3>
+              <p className="text-[11px] text-[#556B5F] dark:text-[#95AFA1]">External professional profiles & credentials</p>
             </div>
 
-            <div className="space-y-2.5 text-xs">
-              <div className="p-3 rounded-xl bg-secondary/50 border border-border flex items-center justify-between">
+            <div className="space-y-2 text-xs">
+              <div className="p-3 rounded-xl bg-[#FAF8F5] dark:bg-[#17241D] border border-[rgba(28,46,36,0.08)] flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] text-muted-foreground block font-bold">CURRENT CGPA</span>
-                  <span className="text-base font-black text-foreground font-mono">{formData.cgpa} / 10.00</span>
+                  <span className="text-[9px] text-[#556B5F] block font-bold uppercase">CURRENT CGPA</span>
+                  <span className="text-base font-bold text-[#1C2E24] dark:text-[#F4F7F5] font-mono">{formData.cgpa} / 10.00</span>
                 </div>
-                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                  Top 5% Cohort
-                </span>
+                <GlassBadge label="Top 5% Cohort" variant="success" />
               </div>
 
-              <div className="p-3 rounded-xl bg-secondary/50 border border-border flex items-center justify-between">
+              <div className="p-3 rounded-xl bg-[#FAF8F5] dark:bg-[#17241D] border border-[rgba(28,46,36,0.08)] flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] text-muted-foreground block font-bold">TARGET ROLE</span>
-                  <span className="text-xs font-bold text-foreground">{formData.targetRole}</span>
+                  <span className="text-[9px] text-[#556B5F] block font-bold uppercase">TARGET ROLE</span>
+                  <span className="text-xs font-semibold text-[#1C2E24] dark:text-[#F4F7F5]">{formData.targetRole}</span>
                 </div>
-                <Briefcase size={15} className="text-primary" />
+                <Briefcase size={14} className="text-[#4E7D63]" />
               </div>
             </div>
 
             {/* Links */}
-            <div className="space-y-2 pt-2 border-t border-border">
+            <div className="space-y-1.5 pt-2 border-t border-[rgba(28,46,36,0.08)]">
               <a
                 href={formData.githubUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2.5 rounded-xl bg-secondary hover:bg-secondary/80 border border-border flex items-center justify-between text-xs font-semibold text-foreground transition-all"
+                className="p-2.5 rounded-xl bg-[#FAF8F5] dark:bg-[#17241D] hover:bg-[#EAE6DE] border border-[rgba(28,46,36,0.08)] flex items-center justify-between text-xs font-semibold text-[#1C2E24] dark:text-[#F4F7F5] transition-colors"
               >
                 <span>GitHub Developer Profile</span>
-                <ExternalLink size={12} className="text-muted-foreground" />
+                <ExternalLink size={12} className="text-[#556B5F]" />
               </a>
               <a
                 href={formData.linkedinUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2.5 rounded-xl bg-secondary hover:bg-secondary/80 border border-border flex items-center justify-between text-xs font-semibold text-foreground transition-all"
+                className="p-2.5 rounded-xl bg-[#FAF8F5] dark:bg-[#17241D] hover:bg-[#EAE6DE] border border-[rgba(28,46,36,0.08)] flex items-center justify-between text-xs font-semibold text-[#1C2E24] dark:text-[#F4F7F5] transition-colors"
               >
                 <span>LinkedIn Professional Profile</span>
-                <ExternalLink size={12} className="text-muted-foreground" />
+                <ExternalLink size={12} className="text-[#556B5F]" />
               </a>
               <a
                 href={formData.leetcodeProfile}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2.5 rounded-xl bg-secondary hover:bg-secondary/80 border border-border flex items-center justify-between text-xs font-semibold text-foreground transition-all"
+                className="p-2.5 rounded-xl bg-[#FAF8F5] dark:bg-[#17241D] hover:bg-[#EAE6DE] border border-[rgba(28,46,36,0.08)] flex items-center justify-between text-xs font-semibold text-[#1C2E24] dark:text-[#F4F7F5] transition-colors"
               >
                 <span>LeetCode Problem Solving Rank</span>
-                <ExternalLink size={12} className="text-muted-foreground" />
+                <ExternalLink size={12} className="text-[#556B5F]" />
               </a>
             </div>
           </div>
-        </div>
+        </GlassSurface>
       </div>
     </div>
   );

@@ -83,6 +83,14 @@ app.use((req, res) => {
 // Central error handler
 app.use(errorMiddleware);
 
+process.on("unhandledRejection", (reason, promise) => {
+    console.error("[Server] Unhandled Rejection at:", promise, "reason:", reason);
+});
+
+process.on("uncaughtException", (error) => {
+    console.error("[Server] Uncaught Exception thrown:", error);
+});
+
 // Start server only when executed directly
 if (require.main === module) {
     app.listen(PORT, () => {

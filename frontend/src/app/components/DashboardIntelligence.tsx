@@ -1,4 +1,5 @@
 import React from "react";
+import { motion } from "motion/react";
 import {
   Sparkles,
   ShieldCheck,
@@ -15,7 +16,7 @@ import {
   Play,
   RotateCcw,
   Compass,
-  MessageSquare,
+  GraduationCap,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -32,6 +33,8 @@ import {
   StudentProfileData,
   NextBestAction,
 } from "../../data/studentIntelligence";
+import MeridianOrbit3D from "./MeridianOrbit3D";
+import { GlassSurface, GlassButton, GlassBadge, GlassMetric } from "./ui/LiquidGlass";
 
 interface DashboardIntelligenceProps {
   profile: StudentProfileData;
@@ -79,114 +82,191 @@ export default function DashboardIntelligence({
   );
 
   return (
-    <div className="space-y-6">
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="space-y-6"
+    >
       {/* ══════════════════════════════════════════════════════════════ */}
-      {/* 1. HERO BANNER WITH TODAY'S STUDENT INTELLIGENCE               */}
+      {/* 1. EDITORIAL ASYMMETRIC HERO & 3D LEARNING ORBIT               */}
       {/* ══════════════════════════════════════════════════════════════ */}
-      <div className="bg-card border border-border rounded-2xl p-6 relative overflow-hidden shadow-xs">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-xl">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
-                Semester 5 • Placement Cohort
-              </span>
-              <span className="text-xs text-muted-foreground">{profile.college}</span>
-            </div>
-
-            <h1 className="text-2xl font-black text-foreground">
-              Good morning, {profile.name.split(" ")[0]} 👋
-            </h1>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Tracking <strong className="text-foreground">{profile.targetRole}</strong> requirements with <strong className="text-primary">72%</strong> placement readiness benchmark.
-            </p>
-
-            <div className="pt-2 flex flex-wrap items-center gap-2.5">
-              <button
-                onClick={() => onNavigateToCareer?.()}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-white shadow-xs flex items-center gap-1.5 transition-all hover:opacity-95 cursor-pointer"
-                style={{ background: "linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)" }}
-              >
-                <Sparkles size={13} />
-                <span>Run Career Gap Intelligence</span>
-              </button>
-              <button
-                onClick={() => onNavigateToInterview?.()}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-foreground bg-secondary hover:bg-secondary/80 border border-border flex items-center gap-1.5 transition-all cursor-pointer"
-              >
-                <MessageSquare size={13} />
-                <span>Launch Mock Interview</span>
-              </button>
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        {/* Left 7/12: Typography-led Editorial Greeting */}
+        <div className="lg:col-span-7 space-y-3.5">
+          <div className="flex items-center gap-2">
+            <GlassBadge
+              label="Semester 5 • Placement Cohort"
+              variant="primary"
+              icon={<Sparkles size={11} className="text-[#4E7D63]" />}
+            />
+            <span className="text-xs text-[#556B5F] dark:text-[#95AFA1] font-mono">VIT-Chennai</span>
           </div>
 
-          {/* Placement Standing Telemetry */}
-          <div className="flex items-center gap-5 bg-secondary/50 border border-border p-4 rounded-2xl">
-            <div className="text-center space-y-1">
-              <span className="text-3xl font-black text-foreground font-mono">85%</span>
-              <span className="text-[9px] font-bold text-primary uppercase block">Readiness</span>
-            </div>
-            <div className="space-y-1 text-xs border-l border-border pl-4">
-              <div>
-                <span className="text-[10px] font-bold text-muted-foreground uppercase block">Benchmark Standing</span>
-                <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                  <ShieldCheck size={13} /> Level 4 Placement Ready
-                </span>
-              </div>
-              <div>
-                <span className="text-[10px] font-bold text-muted-foreground uppercase block">Immediate Focus</span>
-                <span className="font-medium text-amber-600 dark:text-amber-400">
-                  {weakestTopic ? `${weakestTopic.topicName} (${weakestTopic.masteryScore}%)` : "System Design"}
-                </span>
-              </div>
-            </div>
+          <h1 className="text-3xl lg:text-4xl font-bold text-[#1C2E24] dark:text-[#F4F7F5] tracking-tight leading-tight">
+            Good afternoon, {profile.name.split(" ")[0]}.
+          </h1>
+
+          <p className="text-sm text-[#556B5F] dark:text-[#95AFA1] max-w-xl leading-relaxed">
+            You are tracking <strong className="text-[#1C2E24] dark:text-[#F4F7F5] font-semibold">{profile.targetRole}</strong> requirements with <strong className="text-[#4E7D63] dark:text-[#6E9B82] font-bold">72%</strong> placement readiness benchmark across FAANG & Tier-1 Super Dream standards.
+          </p>
+
+          {/* Quick Action Steppers */}
+          <div className="pt-2 flex flex-wrap items-center gap-3">
+            <GlassButton
+              variant="primary"
+              size="md"
+              onClick={() => onNavigateToRoadmap?.()}
+            >
+              <Compass size={14} />
+              <span>Resume Learning Journey</span>
+              <ArrowRight size={13} />
+            </GlassButton>
+
+            <GlassButton
+              variant="secondary"
+              size="md"
+              onClick={() => onNavigateToCareer?.()}
+            >
+              <Target size={14} />
+              <span>Skill Gap Intelligence</span>
+            </GlassButton>
           </div>
+        </div>
+
+        {/* Right 5/12: Interactive 3D Meridian Learning Orbit Centerpiece */}
+        <div className="lg:col-span-5">
+          <GlassSurface level={1} className="p-2">
+            <MeridianOrbit3D
+              score={72}
+              activeStage="Stage 02: Core Computer Science"
+              onSelectStage={() => onNavigateToRoadmap?.()}
+            />
+          </GlassSurface>
         </div>
       </div>
 
       {/* ══════════════════════════════════════════════════════════════ */}
-      {/* 2. TODAY'S FOCUS & TOP NEXT-BEST ACTIONS                       */}
+      {/* 2. SPATIAL METRIC GAUGES                                       */}
       {/* ══════════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Metric 1: Floating CGPA Indicator */}
+        <GlassSurface level={2} className="p-4.5 flex flex-col justify-between">
+          <GlassMetric
+            label="Cumulative GPA"
+            value={`${profile.cgpa.toFixed(2)}`}
+            trend="+0.18 Delta"
+            trendPositive={true}
+            subtext="Semester 5 • Top 8%"
+            icon={<GraduationCap size={15} />}
+          />
+        </GlassSurface>
+
+        {/* Metric 2: Today Focus Minutes */}
+        <GlassSurface level={2} className="p-4.5 flex flex-col justify-between">
+          <GlassMetric
+            label="Today's Focused Study"
+            value={`${profile.todayStudyMinutes}m`}
+            trend={`${profile.targetDailyMinutes}m Goal`}
+            trendPositive={profile.todayStudyMinutes >= profile.targetDailyMinutes}
+            subtext={`${profile.studyStreakDays}-Day Active Streak`}
+            icon={<Flame size={15} />}
+          />
+        </GlassSurface>
+
+        {/* Metric 3: Verified Topic Mastery */}
+        <GlassSurface level={2} className="p-4.5 flex flex-col justify-between">
+          <GlassMetric
+            label="Mastered Topics"
+            value={profile.masteredTopicsCount}
+            trend="Level 4 Ready"
+            trendPositive={true}
+            subtext="Core CS, DSA & Systems"
+            icon={<Target size={15} />}
+          />
+        </GlassSurface>
+
+        {/* Metric 4: Placement Readiness Level */}
+        <GlassSurface level={2} className="p-4.5 flex flex-col justify-between">
+          <GlassMetric
+            label="Placement Readiness"
+            value="72%"
+            trend="Super Dream"
+            trendPositive={true}
+            subtext="Tier-1 CDC Standard"
+            icon={<ShieldCheck size={15} />}
+          />
+        </GlassSurface>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {/* 3. TODAY'S FOCUS: NEXT BEST ACTIONS                            */}
+      {/* ══════════════════════════════════════════════════════════════ */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Next Best Actions (7 Columns) */}
-        <div className="lg:col-span-7 bg-card border border-border rounded-2xl p-5 shadow-xs space-y-3.5">
-          <div className="flex items-center justify-between">
+        <GlassSurface level={2} className="lg:col-span-7 p-5 space-y-3.5">
+          <div className="flex items-center justify-between pb-1">
             <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-primary animate-ping" />
-              <h3 className="text-sm font-bold text-foreground">Today's Focus: Next Best Actions</h3>
+              <div className="w-2 h-2 rounded-full bg-[#4E7D63] pulse-ai-dot" />
+              <h3 className="text-sm font-bold text-[#1C2E24] dark:text-[#F4F7F5]">Today's Focus: Next Best Actions</h3>
             </div>
-            <span className="text-[10px] font-bold text-muted-foreground uppercase">
-              Explainable AI Recommendations
-            </span>
+            <GlassBadge label="Autonomous Recommendations" variant="primary" />
           </div>
 
+          {/* Flowing Action Rows with Natural Earth Tonal Accents */}
           <div className="space-y-2.5">
-            {nextBestActions.slice(0, 3).map((action) => {
-              const urgencyBadge: Record<string, string> = {
-                CRITICAL: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
-                HIGH: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-                MEDIUM: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
-                NORMAL: "bg-secondary text-muted-foreground border-border",
-              };
+            {nextBestActions.slice(0, 3).map((action, idx) => {
+              const glowType: "critical" | "high" | "medium" | "normal" =
+                action.urgency === "CRITICAL"
+                  ? "critical"
+                  : action.urgency === "HIGH"
+                  ? "high"
+                  : action.urgency === "MEDIUM"
+                  ? "medium"
+                  : "normal";
+
+              const urgencyBadgeVariant: "danger" | "warning" | "primary" | "success" =
+                action.urgency === "CRITICAL"
+                  ? "danger"
+                  : action.urgency === "HIGH"
+                  ? "warning"
+                  : action.urgency === "MEDIUM"
+                  ? "primary"
+                  : "success";
 
               return (
-                <div
+                <motion.div
                   key={action.id}
-                  className="p-3.5 rounded-xl bg-secondary/50 border border-border flex items-start justify-between gap-3 hover:border-primary/40 transition-all shadow-2xs"
+                  initial={{ opacity: 0, x: -6 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                  className={`p-3.5 rounded-xl transition-all duration-150 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                    glowType === "critical"
+                      ? "glass-glow-critical"
+                      : glowType === "high"
+                      ? "glass-glow-high"
+                      : glowType === "medium"
+                      ? "glass-glow-medium"
+                      : "glass-glow-normal"
+                  }`}
                 >
-                  <div className="space-y-1">
+                  <div className="space-y-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded border ${urgencyBadge[action.urgency]}`}>
-                        {action.urgency}
-                      </span>
-                      <span className="text-xs font-bold text-foreground">{action.title}</span>
+                      <GlassBadge
+                        label={action.urgency}
+                        variant={urgencyBadgeVariant}
+                      />
+                      <span className="text-xs font-semibold text-[#1C2E24] dark:text-[#F4F7F5] truncate">{action.title}</span>
                     </div>
-                    <p className="text-[11px] text-muted-foreground leading-tight">{action.reason}</p>
-                    <span className="text-[10px] text-primary font-medium flex items-center gap-1 pt-0.5">
+                    <p className="text-[11px] text-[#556B5F] dark:text-[#95AFA1] leading-relaxed">{action.reason}</p>
+                    <span className="text-[10px] text-[#4E7D63] dark:text-[#6E9B82] font-medium flex items-center gap-1 pt-0.5">
                       <Clock size={11} /> ~{action.estimatedMinutes} mins • {action.category}
                     </span>
                   </div>
 
-                  <button
+                  <GlassButton
+                    variant="primary"
+                    size="sm"
                     onClick={() => {
                       if (action.actionType === "attempt_quiz") {
                         onNavigateToRoadmap?.(action.targetPayload?.topicId);
@@ -198,116 +278,121 @@ export default function DashboardIntelligence({
                         onNavigateToInterview?.();
                       }
                     }}
-                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-primary text-white hover:opacity-90 transition-all flex items-center gap-1 flex-shrink-0 cursor-pointer shadow-xs"
+                    className="flex-shrink-0"
                   >
-                    <span>Start</span>
-                    <ArrowRight size={12} />
-                  </button>
-                </div>
+                    <span>Launch</span>
+                    <ArrowRight size={11} />
+                  </GlassButton>
+                </motion.div>
               );
             })}
           </div>
-        </div>
+        </GlassSurface>
 
-        {/* 7-Day Study Momentum Telemetry (5 Columns) */}
-        <div className="lg:col-span-5 bg-card border border-border rounded-2xl p-5 shadow-xs space-y-3.5 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
+        {/* 7-Day Study Momentum (5 Columns) */}
+        <GlassSurface level={2} className="lg:col-span-5 p-5 space-y-3.5 flex flex-col justify-between">
+          <div className="flex items-center justify-between pb-1">
             <div>
-              <h3 className="text-sm font-bold text-foreground">Study Momentum (7 Days)</h3>
-              <p className="text-[11px] text-muted-foreground">Daily focused study hours vs target</p>
+              <h3 className="text-sm font-bold text-[#1C2E24] dark:text-[#F4F7F5]">Study Momentum (7 Days)</h3>
+              <p className="text-[11px] text-[#556B5F] dark:text-[#95AFA1]">Daily focused study hours vs target</p>
             </div>
-            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
-              <Flame size={12} /> {profile.studyStreakDays}d Streak
-            </span>
+            <GlassBadge
+              label={`${profile.studyStreakDays}d Streak`}
+              variant="success"
+              icon={<Flame size={12} className="text-[#4E7D63]" />}
+            />
           </div>
 
-          <div className="h-44 w-full">
+          <div className="h-40 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={WEEK_DATA_7D} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
-                <XAxis dataKey="day" stroke="#94A3B8" fontSize={10} tickLine={false} />
-                <YAxis stroke="#94A3B8" fontSize={10} tickLine={false} />
+              <BarChart data={WEEK_DATA_7D} margin={{ top: 8, right: 0, left: -25, bottom: 0 }}>
+                <XAxis dataKey="day" stroke="#7C9184" fontSize={10} tickLine={false} />
+                <YAxis stroke="#7C9184" fontSize={10} tickLine={false} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: "#0F172A", borderColor: "#334155", borderRadius: "8px", fontSize: "11px", color: "#F8FAFC" }}
+                  contentStyle={{
+                    backgroundColor: "#F2EFE9",
+                    borderColor: "rgba(28, 46, 36, 0.15)",
+                    borderRadius: "10px",
+                    fontSize: "11px",
+                    color: "#1C2E24",
+                  }}
                 />
                 <Bar dataKey="hours" name="Study Hours" radius={[4, 4, 0, 0]}>
                   {WEEK_DATA_7D.map((entry, index) => (
-                    <Cell key={index} fill={entry.today ? "#4F46E5" : "#818CF8"} />
+                    <Cell
+                      key={index}
+                      fill={entry.today ? "#4E7D63" : "rgba(78, 125, 99, 0.4)"}
+                    />
                   ))}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
 
-          <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-border">
-            <span>Today: <strong className="text-foreground">{profile.todayStudyMinutes} mins</strong></span>
-            <span>Goal: <strong className="text-foreground">{profile.targetDailyMinutes} mins</strong></span>
+          <div className="flex items-center justify-between text-xs text-[#556B5F] dark:text-[#95AFA1] pt-2 border-t border-[rgba(28,46,36,0.08)]">
+            <span>Today: <strong className="text-[#1C2E24] dark:text-[#F4F7F5] font-mono">{profile.todayStudyMinutes} mins</strong></span>
+            <span>Daily Goal: <strong className="text-[#1C2E24] dark:text-[#F4F7F5] font-mono">{profile.targetDailyMinutes} mins</strong></span>
           </div>
-        </div>
+        </GlassSurface>
       </div>
 
       {/* ══════════════════════════════════════════════════════════════ */}
-      {/* 3. WEAK/STRONG INTELLIGENCE & REVISION ALERT PANELS            */}
+      {/* 4. CONTEXTUAL ACADEMIC, REVISION & STRENGTH SIGNALS            */}
       {/* ══════════════════════════════════════════════════════════════ */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Weak Topic Alert */}
-        <div className="bg-card border border-border p-4 rounded-2xl shadow-xs space-y-2">
+        {/* Priority Weak Area */}
+        <GlassSurface level={2} className="p-4.5 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase text-rose-600 dark:text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded">
-              Priority Weak Area
-            </span>
-            <AlertTriangle size={15} className="text-rose-500" />
+            <GlassBadge label="Needs Practice" variant="warning" />
+            <AlertTriangle size={15} className="text-[#8C532B]" />
           </div>
-          <h4 className="text-sm font-bold text-foreground">{weakestTopic?.topicName}</h4>
-          <p className="text-xs text-muted-foreground">
-            Current Accuracy: <strong className="text-rose-600 dark:text-rose-400">{weakestTopic?.masteryScore}%</strong> ({weakestTopic?.correctAttempts}/{weakestTopic?.totalAttempts} Solved).
+          <h4 className="text-sm font-bold text-[#1C2E24] dark:text-[#F4F7F5]">{weakestTopic?.topicName}</h4>
+          <p className="text-xs text-[#556B5F] dark:text-[#95AFA1] leading-relaxed">
+            Current Accuracy: <strong className="text-[#8C532B] dark:text-[#D49E78] font-semibold">{weakestTopic?.masteryScore}%</strong> ({weakestTopic?.correctAttempts}/{weakestTopic?.totalAttempts} Solved).
           </p>
           <button
             onClick={() => onNavigateToRoadmap?.(weakestTopic?.topicId)}
-            className="text-xs font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer pt-1"
+            className="text-xs font-semibold text-[#4E7D63] dark:text-[#6E9B82] hover:underline flex items-center gap-1 cursor-pointer pt-1"
           >
             <span>Practice in Roadmap</span>
             <ArrowRight size={12} />
           </button>
-        </div>
+        </GlassSurface>
 
-        {/* Strong Topic Standing */}
-        <div className="bg-card border border-border p-4 rounded-2xl shadow-xs space-y-2">
+        {/* Top Verified Strength */}
+        <GlassSurface level={2} className="p-4.5 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">
-              Top Strength
-            </span>
-            <CheckCircle2 size={15} className="text-emerald-500" />
+            <GlassBadge label="Top Strength" variant="success" />
+            <CheckCircle2 size={15} className="text-[#4E7D63]" />
           </div>
-          <h4 className="text-sm font-bold text-foreground">{strongestTopic?.topicName}</h4>
-          <p className="text-xs text-muted-foreground">
-            Current Accuracy: <strong className="text-emerald-600 dark:text-emerald-400">{strongestTopic?.masteryScore}%</strong> ({strongestTopic?.correctAttempts}/{strongestTopic?.totalAttempts} Solved).
+          <h4 className="text-sm font-bold text-[#1C2E24] dark:text-[#F4F7F5]">{strongestTopic?.topicName}</h4>
+          <p className="text-xs text-[#556B5F] dark:text-[#95AFA1] leading-relaxed">
+            Current Accuracy: <strong className="text-[#3B624E] dark:text-[#8EB7A0] font-semibold">{strongestTopic?.masteryScore}%</strong> ({strongestTopic?.correctAttempts}/{strongestTopic?.totalAttempts} Solved).
           </p>
-          <span className="text-xs font-medium text-muted-foreground block pt-1">
+          <span className="text-xs text-[#556B5F] dark:text-[#95AFA1] block pt-1">
             Verified Level 4 Placement Ready ✓
           </span>
-        </div>
+        </GlassSurface>
 
         {/* Spaced Revision Due */}
-        <div className="bg-card border border-border p-4 rounded-2xl shadow-xs space-y-2">
+        <GlassSurface level={2} className="p-4.5 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded">
-              Spaced Revision
-            </span>
-            <Clock size={15} className="text-purple-500" />
+            <GlassBadge label="Spaced Revision" variant="primary" />
+            <Clock size={15} className="text-[#4E7D63]" />
           </div>
-          <h4 className="text-sm font-bold text-foreground">{dueRevisions.length} Topics Due Today</h4>
-          <p className="text-xs text-muted-foreground">
-            {dueRevisions.map((t) => t.topicName).slice(0, 2).join(", ")}
+          <h4 className="text-sm font-bold text-[#1C2E24] dark:text-[#F4F7F5]">{dueRevisions.length} Topics Due Today</h4>
+          <p className="text-xs text-[#556B5F] dark:text-[#95AFA1] leading-relaxed truncate">
+            {dueRevisions.map((t) => t.topicName).slice(0, 2).join(", ") || "All caught up for today"}
           </p>
           <button
             onClick={() => onNavigateToRoadmap?.()}
-            className="text-xs font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer pt-1"
+            className="text-xs font-semibold text-[#4E7D63] dark:text-[#6E9B82] hover:underline flex items-center gap-1 cursor-pointer pt-1"
           >
             <span>Start Scheduled Revision</span>
             <ArrowRight size={12} />
           </button>
-        </div>
+        </GlassSurface>
       </div>
-    </div>
+    </motion.div>
   );
 }

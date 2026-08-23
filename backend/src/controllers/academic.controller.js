@@ -118,6 +118,17 @@ class AcademicController {
             next(err);
         }
     }
+
+    async getSubjectGrades(req, res, next) {
+        try {
+            const studentId = req.user?.student?.id || req.user?.id || req.query.studentId || "00000000-0000-0000-0000-000000000001";
+            const semester = parseInt(req.query.semester, 10) || 5;
+            const grades = await academicService.getSubjectGrades(studentId, semester);
+            return sendSuccess(res, grades);
+        } catch (err) {
+            next(err);
+        }
+    }
 }
 
 module.exports = new AcademicController();

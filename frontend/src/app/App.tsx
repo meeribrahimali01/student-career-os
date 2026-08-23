@@ -58,8 +58,11 @@ import {
   LineChart,
   Line,
 } from "recharts";
+import { motion, AnimatePresence } from "motion/react";
 import CampusMap from "./components/CampusMap";
-import StudyRoadmap from "./components/StudyRoadmap";
+import PersonalizedRoadmap from "./components/PersonalizedRoadmap";
+import MeridianNavRail from "./components/MeridianNavRail";
+import MeridianAuthOrbit from "./components/auth/MeridianAuthOrbit";
 import AcademicTracker from "./components/AcademicTracker";
 import AIDoubtSolver from "./components/AIDoubtSolver";
 import SmartResources from "./components/SmartResources";
@@ -68,6 +71,7 @@ import PlacementPrep from "./components/PlacementPrep";
 import ProductivityCoach from "./components/ProductivityCoach";
 import StudentProfile from "./components/StudentProfile";
 import DashboardIntelligence from "./components/DashboardIntelligence";
+import { GlassSurface, GlassButton, GlassBadge, GlassDivider } from "./components/ui/LiquidGlass";
 import {
   loadStudentIntelligenceState,
   saveStudentIntelligenceState,
@@ -78,6 +82,7 @@ import {
   AcademicSubject,
   StudentProfileData,
 } from "../data/studentIntelligence";
+import { meridianDataService } from "../services/meridianDataService";
 import { generateCareerIntelligence } from "../../careerGapService.js";
 import {
   generateMockInterview,
@@ -442,8 +447,19 @@ export default function App() {
     return calculateNextBestActions(topicMasteryMap, academicSubjects, studentProfile);
   }, [topicMasteryMap, academicSubjects, studentProfile]);
 
-  // Handler for Question Attempt
+  // Handler for Question Attempt (Connected to real Database via meridianDataService)
   const handleRecordAttempt = (question: Question, isCorrect: boolean, timeSeconds: number, selectedAnswer: any) => {
+    // 1. Asynchronously persist to backend PostgreSQL / Supabase
+    meridianDataService.submitQuestionAttempt({
+      questionId: question.id,
+      topicId: question.topicId,
+      selectedAnswer: String(selectedAnswer),
+      timeSeconds,
+    }).catch((err) => {
+      console.warn("[App] Background question attempt persist:", err.message);
+    });
+
+    // 2. Update reactive local state
     const updatedMastery = recordQuestionAttemptEngine(
       topicMasteryMap,
       {
@@ -466,8 +482,14 @@ export default function App() {
     });
   };
 
-  // Handler for Revision Scheduling
+  // Handler for Revision Scheduling (Connected to real Database via meridianDataService)
   const handleScheduleRevision = (topicId: string, intervalDays: number) => {
+    // 1. Asynchronously persist to backend PostgreSQL / Supabase
+    meridianDataService.setRevisionSchedule(topicId, intervalDays).catch((err) => {
+      console.warn("[App] Background revision schedule persist:", err.message);
+    });
+
+    // 2. Update reactive local state
     const existing = topicMasteryMap[topicId];
     if (!existing) return;
     const dueLabel = intervalDays === 1 ? "Tomorrow" : `In ${intervalDays} days`;
@@ -489,7 +511,7 @@ export default function App() {
     });
   };
 
-  // Handler for Profile Updates
+  // Handler for Profile Updates (Connected to real Database via meridianDataService)
   const handleUpdateProfile = (updated: StudentProfileData) => {
     setStudentProfile(updated);
     saveStudentIntelligenceState({
@@ -497,7 +519,60 @@ export default function App() {
       subjects: academicSubjects,
       profile: updated,
     });
+
+    meridianDataService.updateMyProfile({
+      fullName: updated.name,
+      college: updated.college,
+      branch: updated.branch,
+      semester: updated.semester,
+      cgpa: updated.cgpa,
+      targetRole: updated.targetRole,
+      targetCompanies: updated.targetCompanies,
+      githubUrl: updated.githubUrl,
+      linkedinUrl: updated.linkedinUrl,
+      leetcodeProfile: updated.leetcodeProfile,
+    }).catch((err) => {
+      console.warn("[App] Background profile update persist:", err.message);
+    });
   };
+
+  // Sync authenticated student data when session is established
+  useEffect(() => {
+    if (!currentUser || authStatus !== "authenticated") return;
+
+    async function syncStudentData() {
+      try {
+        const profileData = await meridianDataService.getMyProfile();
+        if (profileData) {
+          const studentProfileInfo = profileData.profile || {};
+          const careerPrefs = profileData.career_preferences || {};
+          setStudentProfile((prev) => ({
+            ...prev,
+            name: studentProfileInfo.full_name || currentUser.profile?.full_name || currentUser.email?.split("@")[0] || "Student",
+            email: studentProfileInfo.email || currentUser.email || "",
+            college: profileData.college || "VIT Chennai",
+            branch: profileData.branch || "Computer Science & Engineering",
+            semester: profileData.semester || 5,
+            cgpa: profileData.current_cgpa || 0.0,
+            targetRole: careerPrefs.targetRole || prev.targetRole || "Full Stack Engineer",
+            targetCompanies: careerPrefs.targetCompanies || prev.targetCompanies || ["Google", "Microsoft", "Amazon"],
+            githubUrl: careerPrefs.githubUrl || prev.githubUrl || "",
+            linkedinUrl: careerPrefs.linkedinUrl || prev.linkedinUrl || "",
+            leetcodeProfile: careerPrefs.leetcodeProfile || prev.leetcodeProfile || "",
+          }));
+        }
+
+        const liveMastery = await meridianDataService.getTopicMastery();
+        if (liveMastery && Object.keys(liveMastery).length > 0) {
+          setTopicMasteryMap(liveMastery);
+        }
+      } catch (err: any) {
+        console.warn("[App] Could not sync student profile:", err.message);
+      }
+    }
+
+    syncStudentData();
+  }, [currentUser, authStatus]);
 
   // Check auth session on startup
   useEffect(() => {
@@ -514,8 +589,12 @@ export default function App() {
           setAuthStatus("authenticated");
         } else {
           const savedUser = getStoredUser();
-          setCurrentUser(savedUser || { email: "student@meridian.edu", profile: { full_name: "Aryan Kumar" } });
-          setAuthStatus("authenticated");
+          if (savedUser) {
+            setCurrentUser(savedUser);
+            setAuthStatus("authenticated");
+          } else {
+            setAuthStatus("unauthenticated");
+          }
         }
       } catch {
         setAuthStatus("unauthenticated");
@@ -576,7 +655,6 @@ export default function App() {
             setCurrentUser(res.data.user || { email: cleanEmail, profile: { full_name: authFullName.trim() || cleanEmail.split("@")[0] } });
             setAuthStatus("authenticated");
           } else {
-            // Email verification required
             setAuthMode("login");
             setAuthError("Account created! Please check your email to verify your Meridian account before signing in.");
           }
@@ -595,16 +673,18 @@ export default function App() {
     setIsAuthenticating(true);
     setAuthError(null);
     try {
-      const res = await loginUser({ email: "test@careeros.com", password: "password123" });
-      if (res.success) {
-        setCurrentUser(res.data?.user);
+      const res = await loginUser({ email: "student@meridian.vit.edu", password: "DemoStudent123!" });
+      if (res.success && res.data?.token) {
+        setCurrentUser(res.data.user);
         setAuthStatus("authenticated");
       } else {
-        setCurrentUser({ email: "aryan.kumar@meridian.edu", profile: { full_name: "Aryan Kumar", role: "student" } });
+        const fallbackUser = { email: "student@meridian.vit.edu", profile: { full_name: "Demo Student", role: "student" } };
+        setCurrentUser(fallbackUser);
         setAuthStatus("authenticated");
       }
     } catch {
-      setCurrentUser({ email: "aryan.kumar@meridian.edu", profile: { full_name: "Aryan Kumar", role: "student" } });
+      const fallbackUser = { email: "student@meridian.vit.edu", profile: { full_name: "Demo Student", role: "student" } };
+      setCurrentUser(fallbackUser);
       setAuthStatus("authenticated");
     } finally {
       setIsAuthenticating(false);
@@ -614,8 +694,14 @@ export default function App() {
   const handleLogout = async () => {
     setShowUserMenu(false);
     await logoutUser();
+    clearAuthToken();
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("student_intelligence_state_v1");
+    }
     setCurrentUser(null);
+    setTopicMasteryMap({});
     setAuthStatus("unauthenticated");
+    setActiveNav("Dashboard");
   };
 
   // Roadmap & Tasks Interactive State
@@ -928,208 +1014,28 @@ export default function App() {
     );
   }
 
-  // 2. Unauthenticated Login Screen
+  // 2. Unauthenticated Login Screen (MERIDIAN LEARNING ORBIT)
   if (authStatus === "unauthenticated") {
     return (
-      <div className="min-h-screen w-screen flex flex-col lg:flex-row bg-background text-foreground font-sans">
-        {/* Left Hero Branded Canvas */}
-        <div
-          className="lg:w-7/12 p-8 lg:p-14 flex flex-col justify-between relative overflow-hidden text-white"
-          style={{ background: "linear-gradient(135deg, #0B0F19 0%, #111827 50%, #1E1B4B 100%)" }}
-        >
-          <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-10">
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-md"
-                style={{ background: "linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)" }}
-              >
-                <Compass size={22} />
-              </div>
-              <div>
-                <span className="text-xl font-black tracking-tight text-white">Meridian</span>
-                <span className="text-[10px] font-bold text-indigo-300 bg-indigo-950/80 px-2 py-0.5 rounded-full border border-indigo-700/60 ml-2">
-                  Enterprise Platform
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-4 max-w-xl">
-              <span className="text-xs font-extrabold uppercase tracking-widest text-indigo-400">
-                AI Student Career Intelligence Terminal
-              </span>
-              <h1 className="text-3xl lg:text-5xl font-black text-white tracking-tight leading-tight">
-                Build the career you're ready for.
-              </h1>
-              <p className="text-sm text-slate-300 leading-relaxed">
-                Meridian combines live Gemini engineering evaluations, continuous milestone telemetry, and year-adaptive skill gap analysis for ambitious university students.
-              </p>
-            </div>
-          </div>
-
-          {/* Telemetry Visual Preview on Hero Canvas */}
-          <div className="relative z-10 my-8 bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md max-w-lg">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 pulse-ai-dot" />
-                <span className="text-xs font-bold text-slate-200">Active Placement Radar</span>
-              </div>
-              <span className="text-[11px] font-semibold text-indigo-300">Tier-1 SDE Standards</span>
-            </div>
-
-            <div className="flex items-center gap-5">
-              <OrbitalReadinessRing
-                value={85}
-                size={80}
-                strokeWidth={7}
-                color="#818CF8"
-                secondaryColor="#C084FC"
-                trackColor="rgba(255,255,255,0.2)"
-              >
-                <span className="text-base font-black text-white font-mono">85%</span>
-              </OrbitalReadinessRing>
-
-              <div className="space-y-1.5 text-xs">
-                <div className="text-slate-300">
-                  Target: <strong className="text-white">Full Stack Software Engineer</strong>
-                </div>
-                <div className="text-[11px] text-emerald-300 flex items-center gap-1">
-                  <ShieldCheck size={13} /> Level 4 Placement Ready (+0.2 CGPA)
-                </div>
-                <div className="text-[10px] text-slate-400">
-                  Automated by Gemini 3.6 & Supabase PostgreSQL
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="relative z-10 flex items-center justify-between text-xs text-slate-400 pt-6 border-t border-white/10">
-            <span>© 2026 Meridian Intelligence Inc.</span>
-            <span>VIT Chennai Cohort</span>
-          </div>
-        </div>
-
-        {/* Right Auth Area */}
-        <div className="lg:w-5/12 p-8 lg:p-14 flex flex-col justify-center bg-card border-l border-border">
-          <div className="max-w-md w-full mx-auto space-y-6">
-            <div className="space-y-1">
-              <h2 className="text-2xl font-black text-foreground tracking-tight">
-                {authMode === "login" ? "Welcome back" : "Create student account"}
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                {authMode === "login"
-                  ? "Enter your credentials to access your Meridian placement dashboard."
-                  : "Sign up to track your skills, milestones, and mock interviews."}
-              </p>
-            </div>
-
-            {authError && (
-              <div className="bg-destructive/10 border border-destructive/20 text-destructive text-xs p-3.5 rounded-xl flex items-start gap-2.5">
-                <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
-                <span>{authError}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleLoginSubmit} className="space-y-4">
-              {authMode === "signup" && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-foreground block">Full Name</label>
-                  <input
-                    type="text"
-                    value={authFullName}
-                    onChange={(e) => setAuthFullName(e.target.value)}
-                    placeholder="e.g. Aryan Kumar"
-                    className="w-full bg-secondary border border-border rounded-xl px-3.5 py-2.5 text-xs outline-none focus:border-primary text-foreground"
-                    required
-                  />
-                </div>
-              )}
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground block">University / Personal Email</label>
-                <div className="relative">
-                  <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <input
-                    type="email"
-                    value={authEmail}
-                    onChange={(e) => setAuthEmail(e.target.value)}
-                    placeholder="name@university.edu"
-                    className="w-full bg-secondary border border-border rounded-xl pl-10 pr-3.5 py-2.5 text-xs outline-none focus:border-primary text-foreground"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground block">Password</label>
-                <div className="relative">
-                  <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={authPassword}
-                    onChange={(e) => setAuthPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full bg-secondary border border-border rounded-xl pl-10 pr-10 py-2.5 text-xs outline-none focus:border-primary text-foreground"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
-                  >
-                    {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-                  </button>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isAuthenticating}
-                className="w-full py-2.5 rounded-xl font-bold text-xs text-white shadow-sm flex items-center justify-center gap-2 transition-all hover:opacity-95 disabled:opacity-60 cursor-pointer mt-2"
-                style={{ background: "linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)" }}
-              >
-                {isAuthenticating ? (
-                  <>
-                    <RefreshCw size={14} className="animate-spin" />
-                    <span>Verifying Credentials...</span>
-                  </>
-                ) : (
-                  <span>{authMode === "login" ? "Sign In to Meridian" : "Create Meridian Account"}</span>
-                )}
-              </button>
-            </form>
-
-            <div className="relative flex py-2 items-center">
-              <div className="flex-grow border-t border-border"></div>
-              <span className="flex-shrink mx-3 text-[10px] uppercase font-bold text-muted-foreground">Or</span>
-              <div className="flex-grow border-t border-border"></div>
-            </div>
-
-            <button
-              onClick={handleQuickDemoSignIn}
-              disabled={isAuthenticating}
-              className="w-full py-2.5 rounded-xl font-bold text-xs bg-secondary hover:bg-secondary/80 border border-border text-foreground flex items-center justify-center gap-2 transition-all cursor-pointer"
-            >
-              <Sparkles size={14} className="text-primary" />
-              <span>Instant Demo Access (Aryan Kumar)</span>
-            </button>
-
-            <div className="text-center pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthMode((prev) => (prev === "login" ? "signup" : "login"));
-                  setAuthError(null);
-                }}
-                className="text-xs text-primary font-bold hover:underline cursor-pointer"
-              >
-                {authMode === "login"
-                  ? "Don't have an account? Sign up"
-                  : "Already have an account? Sign in"}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <MeridianAuthOrbit
+        authMode={authMode}
+        setAuthMode={setAuthMode}
+        authEmail={authEmail}
+        setAuthEmail={setAuthEmail}
+        authPassword={authPassword}
+        setAuthPassword={setAuthPassword}
+        authFullName={authFullName}
+        setAuthFullName={setAuthFullName}
+        showPassword={showPassword}
+        setShowPassword={setShowPassword}
+        isAuthenticating={isAuthenticating}
+        authError={authError}
+        setAuthError={setAuthError}
+        onLoginSubmit={handleLoginSubmit}
+        onQuickDemoSignIn={handleQuickDemoSignIn}
+        isDark={isDark}
+        setIsDark={setIsDark}
+      />
     );
   }
 
@@ -1142,253 +1048,101 @@ export default function App() {
       {/* ══════════════════════════════════════════════════════════════ */}
       {/* MERIDIAN DISTINCTIVE CONTROL RAIL (SIDEBAR)                    */}
       {/* ══════════════════════════════════════════════════════════════ */}
-      <aside
-        className={`${
-          isSidebarCollapsed ? "w-20" : "w-60"
-        } flex-shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col h-full z-20 transition-all duration-300 ease-in-out`}
-      >
-        {/* Brand Header */}
-        <div className="h-16 flex items-center px-4 border-b border-sidebar-border flex-shrink-0 justify-between">
-          <div className="flex items-center gap-2.5 overflow-hidden">
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-xs flex-shrink-0"
-              style={{ background: "linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)" }}
-            >
-              <Compass size={19} />
-            </div>
-            {!isSidebarCollapsed && (
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-black tracking-tight text-sidebar-foreground truncate">
-                    Meridian
-                  </span>
-                  <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
-                    Pro
-                  </span>
-                </div>
-                <p className="text-[10px] text-muted-foreground font-medium truncate">Career Control Rail</p>
-              </div>
-            )}
-          </div>
+      <MeridianNavRail
+        activeNav={activeNav}
+        onSelectNav={(label) => {
+          setActiveNav(label);
+          setShowUserMenu(false);
+        }}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapsed={() => setIsSidebarCollapsed((prev) => !prev)}
+        studentName={studentDisplayName}
+        studentEmail={studentEmail}
+        onLogout={handleLogout}
+      />
 
-          <button
-            onClick={() => setIsSidebarCollapsed((prev) => !prev)}
-            className="w-6 h-6 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors cursor-pointer hidden lg:flex"
-            title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-          >
-            {isSidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-          </button>
-        </div>
-
-        {/* Categorized Nav Rails */}
-        <nav className="flex-1 py-4 overflow-y-auto no-scroll px-2.5 space-y-4">
-          {NAV_SECTIONS.map(({ section, items }) => (
-            <div key={section}>
-              {!isSidebarCollapsed && (
-                <p className="text-[10px] font-extrabold tracking-widest text-muted-foreground px-2.5 mb-1 select-none uppercase">
-                  {section}
-                </p>
-              )}
-              <div className="space-y-0.5">
-                {items.map(({ icon: Icon, label, badge }) => {
-                  const active = activeNav === label;
-                  return (
-                    <button
-                      key={label}
-                      onClick={() => setActiveNav(label)}
-                      title={isSidebarCollapsed ? label : undefined}
-                      className={`w-full flex items-center ${
-                        isSidebarCollapsed ? "justify-center px-0 py-2.5" : "justify-between px-3 py-2"
-                      } rounded-xl text-xs font-semibold transition-all cursor-pointer relative group ${
-                        active
-                          ? "bg-sidebar-accent text-sidebar-accent-foreground font-bold shadow-xs"
-                          : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                      }`}
-                    >
-                      {active && (
-                        <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-primary" />
-                      )}
-                      <div className="flex items-center gap-2.5">
-                        <Icon
-                          size={16}
-                          strokeWidth={active ? 2.3 : 1.75}
-                          className={active ? "text-primary" : "text-muted-foreground group-hover:text-sidebar-foreground"}
-                        />
-                        {!isSidebarCollapsed && <span>{label}</span>}
-                      </div>
-                      {!isSidebarCollapsed && badge && (
-                        <span
-                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                            active
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted text-muted-foreground"
-                          }`}
-                        >
-                          {badge}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </nav>
-
-        {/* Sidebar Footer with Dark/Light Mode & Student Profile */}
-        <div className="p-2.5 border-t border-sidebar-border flex-shrink-0 space-y-2 bg-sidebar relative">
-          {/* Theme Toggle Bar */}
-          {!isSidebarCollapsed ? (
-            <div className="flex items-center justify-between p-2 rounded-xl bg-secondary text-xs">
-              <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
-                {isDark ? <Moon size={13} className="text-primary" /> : <Sun size={13} className="text-amber-500" />}
-                <span>{isDark ? "Dark Terminal" : "Light Mode"}</span>
-              </span>
-              <button
-                onClick={() => setIsDark((prev) => !prev)}
-                className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-background text-foreground border border-border hover:border-primary transition-all cursor-pointer"
-              >
-                Toggle
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setIsDark((prev) => !prev)}
-              className="w-full flex items-center justify-center p-2 rounded-xl bg-secondary text-muted-foreground hover:text-foreground cursor-pointer"
-              title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            >
-              {isDark ? <Moon size={15} className="text-primary" /> : <Sun size={15} className="text-amber-500" />}
-            </button>
-          )}
-
-          {/* Student Status Profile Badge with Interactive Menu Trigger */}
-          <div
-            onClick={() => setShowUserMenu((prev) => !prev)}
-            className={`flex items-center ${
-              isSidebarCollapsed ? "justify-center p-1.5" : "gap-2.5 p-2"
-            } rounded-xl hover:bg-sidebar-accent/60 transition-all cursor-pointer group`}
-          >
-            <div
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0"
-              style={{ background: "linear-gradient(135deg, #4F46E5 0%, #6366F1 100%)" }}
-            >
-              {studentDisplayName.slice(0, 2).toUpperCase()}
-            </div>
-            {!isSidebarCollapsed && (
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold text-sidebar-foreground truncate group-hover:text-primary transition-colors">
-                    {studentDisplayName}
-                  </p>
-                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-1 rounded">
-                    8.6
-                  </span>
-                </div>
-                <p className="text-[10px] text-muted-foreground truncate">{studentEmail}</p>
-              </div>
-            )}
-          </div>
-
-          {/* Popover User Menu */}
-          {showUserMenu && (
-            <div className="absolute bottom-16 left-2 right-2 bg-card border border-border rounded-xl p-3 shadow-lg z-50 space-y-2">
-              <div className="border-b border-border pb-2">
-                <p className="text-xs font-bold text-foreground truncate">{studentDisplayName}</p>
-                <p className="text-[10px] text-muted-foreground truncate">{studentEmail}</p>
-              </div>
-
-              <div className="space-y-1">
-                <button
-                  onClick={() => {
-                    setActiveNav("Profile");
-                    setShowUserMenu(false);
-                  }}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-foreground hover:bg-secondary transition-colors cursor-pointer"
-                >
-                  <User size={13} className="text-muted-foreground" />
-                  <span>Student Profile</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setIsDark((prev) => !prev);
-                  }}
-                  className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs text-foreground hover:bg-secondary transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-2">
-                    {isDark ? <Moon size={13} className="text-primary" /> : <Sun size={13} className="text-amber-500" />}
-                    <span>Theme: {isDark ? "Dark" : "Light"}</span>
-                  </div>
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-destructive hover:bg-destructive/10 transition-colors cursor-pointer font-bold"
-                >
-                  <LogOut size={13} />
-                  <span>Sign Out</span>
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </aside>
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {/* LIVING AMBIENT ATMOSPHERIC BACKGROUND                          */}
+      {/* ══════════════════════════════════════════════════════════════ */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="ambient-living-blob absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-blue-600/10 dark:bg-blue-600/15 blur-[120px]" />
+        <div className="ambient-living-blob absolute top-1/3 -right-40 w-[550px] h-[550px] rounded-full bg-purple-600/10 dark:bg-purple-600/15 blur-[120px]" />
+        <div className="ambient-living-blob absolute -bottom-40 left-1/3 w-[650px] h-[650px] rounded-full bg-indigo-600/8 dark:bg-indigo-600/12 blur-[140px]" />
+      </div>
 
       {/* ══════════════════════════════════════════════════════════════ */}
       {/* MAIN WORKSPACE CANVAS                                          */}
       {/* ══════════════════════════════════════════════════════════════ */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden bg-background">
-        {/* Sticky Header */}
-        <header className="h-16 border-b border-border bg-card/80 backdrop-blur-md flex items-center justify-between px-8 flex-shrink-0 sticky top-0 z-10">
+      <div className="flex-1 flex flex-col h-full overflow-hidden relative z-10 bg-transparent">
+        {/* Sticky Liquid Glass Header */}
+        <header className="h-16 border-b border-white/15 dark:border-white/10 glass-level-2 flex items-center justify-between px-8 flex-shrink-0 sticky top-0 z-20 glass-specular-top">
           <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground font-medium">Meridian /</span>
-            <h2 className="text-sm font-extrabold text-foreground tracking-tight">{activeNav}</h2>
+            <span className="text-xs text-[#556B5F] dark:text-[#95AFA1] font-medium">Meridian /</span>
+            <h2 className="text-sm font-bold text-[#1C2E24] dark:text-[#F4F7F5] tracking-tight">{activeNav}</h2>
 
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10px] font-semibold ml-3">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-ai-dot" />
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#EDF4F0] dark:bg-[#1E2F26] text-[#3B624E] dark:text-[#8EB7A0] border border-[rgba(78,125,99,0.3)] text-[10px] font-semibold ml-3">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#4E7D63] pulse-ai-dot" />
               <span>Gemini 3.6 Connected</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <div className="relative">
               <Search
                 size={13}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-[#556B5F] pointer-events-none"
               />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search skills, topics, questions..."
-                className="w-64 text-xs bg-secondary border border-border rounded-xl pl-8 pr-3 py-1.5 outline-none transition-all placeholder:text-muted-foreground focus:border-primary text-foreground"
+                className="w-60 text-xs bg-[#FAF8F5] dark:bg-[#17241D] border border-[rgba(28,46,36,0.1)] dark:border-[rgba(244,247,245,0.08)] rounded-xl pl-8 pr-3 py-1.5 outline-none transition-colors placeholder:text-[#7C9184] focus:border-[#4E7D63] text-[#1C2E24] dark:text-[#F4F7F5]"
               />
             </div>
 
             <button
+              onClick={() => setIsDark((prev) => !prev)}
+              className="w-8 h-8 flex items-center justify-center rounded-xl border border-[rgba(28,46,36,0.1)] dark:border-[rgba(244,247,245,0.08)] bg-[#FAF8F5] dark:bg-[#17241D] hover:bg-[#EAE6DE] text-[#556B5F] hover:text-[#1C2E24] transition-colors cursor-pointer shadow-2xs"
+              title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {isDark ? <Sun size={14} className="text-[#8C532B]" /> : <Moon size={14} className="text-[#4E7D63]" />}
+            </button>
+
+            <button
               onClick={() => setActiveNav("Events")}
-              className="w-8 h-8 flex items-center justify-center rounded-xl border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-all cursor-pointer relative"
+              className="w-8 h-8 flex items-center justify-center rounded-xl border border-[rgba(28,46,36,0.1)] dark:border-[rgba(244,247,245,0.08)] bg-[#FAF8F5] dark:bg-[#17241D] hover:bg-[#EAE6DE] text-[#556B5F] hover:text-[#1C2E24] transition-colors cursor-pointer relative shadow-2xs"
             >
               <Bell size={14} />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-primary" />
+              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#4E7D63]" />
             </button>
 
             {/* Quick Profile Dropdown Trigger */}
             <button
-              onClick={() => setShowUserMenu((prev) => !prev)}
-              className="flex items-center gap-2 pl-2 pr-2.5 py-1 rounded-xl bg-secondary border border-border hover:border-primary transition-all cursor-pointer"
+              onClick={() => setActiveNav("Profile")}
+              className="flex items-center gap-2 pl-2 pr-2.5 py-1 rounded-xl bg-[#FAF8F5] dark:bg-[#17241D] border border-[rgba(28,46,36,0.1)] dark:border-[rgba(244,247,245,0.08)] hover:border-[#4E7D63] transition-colors cursor-pointer shadow-2xs"
             >
               <div
-                className="w-5 h-5 rounded-md flex items-center justify-center text-white text-[10px] font-bold"
-                style={{ background: "#4F46E5" }}
+                className="w-5 h-5 rounded-md flex items-center justify-center text-[#FBFBF9] text-[10px] font-bold shadow-2xs bg-[#1C2E24] dark:bg-[#4E7D63]"
               >
                 {studentDisplayName.slice(0, 1)}
               </div>
-              <span className="text-xs font-semibold text-foreground">{studentDisplayName.split(" ")[0]}</span>
+              <span className="text-xs font-semibold text-[#1C2E24] dark:text-[#F4F7F5]">{studentDisplayName.split(" ")[0]}</span>
             </button>
           </div>
         </header>
 
-        {/* Scrollable Viewport */}
-        <main className="flex-1 overflow-y-auto p-8 no-scroll">
+        {/* Scrollable Viewport with Framer Motion Transitions */}
+        <main className="flex-1 overflow-y-auto p-6 md:p-8 no-scroll">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeNav}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+              className="w-full"
+            >
           {/* ══════════════════════════════════════════════════════════ */}
           {/* VIEW 1: DASHBOARD (MOMENTUM & TELEMETRY HUB)               */}
           {/* ══════════════════════════════════════════════════════════ */}
@@ -1414,13 +1168,14 @@ export default function App() {
           {/* ══════════════════════════════════════════════════════════ */}
           {activeNav === "Career" && (
             <div className="space-y-6">
-              <div className="bg-card border border-border rounded-2xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <GlassSurface level={2} className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <Sparkles size={15} className="text-primary" />
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-primary">
-                      AI Career Intelligence & Placement Radar
-                    </span>
+                    <GlassBadge
+                      label="AI Career Intelligence & Placement Radar"
+                      variant="primary"
+                      icon={<Sparkles size={13} />}
+                    />
                   </div>
                   <h1 className="text-xl font-black text-foreground">
                     Career Gap Analysis & Year-Adaptive Intelligence
@@ -1430,11 +1185,11 @@ export default function App() {
                   </p>
                 </div>
 
-                <button
+                <GlassButton
+                  variant="primary"
+                  size="md"
                   onClick={handleAnalyzeCareerGap}
                   disabled={careerStatus === "loading"}
-                  className="px-5 py-2.5 rounded-xl font-bold text-xs text-white shadow-xs flex items-center gap-2 transition-all hover:opacity-95 disabled:opacity-70 cursor-pointer flex-shrink-0"
-                  style={{ background: "linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)" }}
                 >
                   {careerStatus === "loading" ? (
                     <>
@@ -1447,18 +1202,18 @@ export default function App() {
                       <span>Analyze My Career Gap</span>
                     </>
                   )}
-                </button>
-              </div>
+                </GlassButton>
+              </GlassSurface>
 
               {careerStatus === "error" && (
-                <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 flex items-start gap-3">
-                  <AlertCircle size={17} className="text-destructive flex-shrink-0 mt-0.5" />
+                <div className="bg-rose-500/10 border border-rose-500/25 rounded-2xl p-4 flex items-start gap-3 backdrop-blur-md">
+                  <AlertCircle size={17} className="text-rose-500 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <h4 className="text-xs font-bold text-destructive">Analysis Notice</h4>
+                    <h4 className="text-xs font-bold text-rose-500">Analysis Notice</h4>
                     <p className="text-xs text-muted-foreground mt-0.5">{careerError}</p>
                     <button
                       onClick={handleAnalyzeCareerGap}
-                      className="mt-2 text-xs font-bold px-3 py-1 rounded-lg bg-destructive text-white cursor-pointer"
+                      className="mt-2 text-xs font-bold px-3 py-1 rounded-xl bg-rose-500 text-white cursor-pointer"
                     >
                       Retry
                     </button>
@@ -1468,7 +1223,7 @@ export default function App() {
 
               {careerReport && (
                 <div className="space-y-6">
-                  <div className="flex border-b border-border space-x-5 overflow-x-auto no-scroll">
+                  <div className="flex border-b border-white/10 space-x-5 overflow-x-auto no-scroll">
                     {[
                       { id: "overview", label: "Readiness & Radar", icon: TrendingUp },
                       { id: "skillgaps", label: `Skill Gaps (${careerReport.skillGaps?.length || 0})`, icon: Target },
@@ -1498,16 +1253,14 @@ export default function App() {
 
                   {activeCareerTab === "overview" && (
                     <div className="grid grid-cols-12 gap-6">
-                      <div className="col-span-12 md:col-span-4 bg-card border border-border p-5 rounded-2xl flex flex-col justify-between space-y-4">
+                      <GlassSurface level={2} className="col-span-12 md:col-span-4 p-5 flex flex-col justify-between space-y-4">
                         <div>
                           <div className="flex items-center justify-between mb-3">
                             <span className="text-[10px] font-bold uppercase text-muted-foreground">
                               Readiness Score
                             </span>
                             {careerReport.aiProvider && (
-                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                                {careerReport.aiProvider}
-                              </span>
+                              <GlassBadge label={careerReport.aiProvider} variant="primary" />
                             )}
                           </div>
 
@@ -1516,40 +1269,40 @@ export default function App() {
                               value={careerReport.readiness?.overallScore || 75}
                               size={88}
                               strokeWidth={8}
-                              color="#4F46E5"
-                              secondaryColor="#7C3AED"
+                              color="#4E7D63"
+                              secondaryColor="#1C2E24"
                             >
-                              <span className="text-xl font-black text-foreground font-mono">
+                              <span className="text-xl font-bold text-[#1C2E24] dark:text-[#F4F7F5] font-mono">
                                 {careerReport.readiness?.overallScore || 75}
                               </span>
                             </OrbitalReadinessRing>
                             <div>
-                              <span className="text-xs font-bold text-foreground block">
+                              <span className="text-xs font-bold text-[#1C2E24] dark:text-[#F4F7F5] block">
                                 Placement Verified
                               </span>
-                              <span className="text-[10px] text-muted-foreground mt-0.5 block">
+                              <span className="text-[10px] text-[#556B5F] dark:text-[#95AFA1] mt-0.5 block">
                                 Industry SDE Standard
                               </span>
                             </div>
                           </div>
 
-                          <p className="text-xs text-muted-foreground mt-3.5 leading-relaxed bg-secondary p-3 rounded-xl">
+                          <p className="text-xs text-[#556B5F] dark:text-[#95AFA1] mt-3.5 leading-relaxed bg-[#FAF8F5] dark:bg-[#17241D] p-3 rounded-xl border border-[rgba(28,46,36,0.08)]">
                             {careerReport.readiness?.explanation}
                           </p>
                         </div>
 
-                        <div className="pt-3 border-t border-border">
-                          <span className="text-[11px] font-bold text-foreground block mb-1">
+                        <div className="pt-3 border-t border-[rgba(28,46,36,0.08)]">
+                          <span className="text-[11px] font-bold text-[#1C2E24] dark:text-[#F4F7F5] block mb-1">
                             Primary Focus Delta:
                           </span>
-                          <span className="text-xs px-2.5 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-semibold inline-block">
+                          <span className="text-xs px-2.5 py-0.5 rounded-lg bg-[#FAF2EB] text-[#8C532B] font-semibold inline-block border border-[rgba(140,83,43,0.3)]">
                             {careerReport.readiness?.biggestImprovementArea || "Distributed Systems & Architecture"}
                           </span>
                         </div>
-                      </div>
+                      </GlassSurface>
 
-                      <div className="col-span-12 md:col-span-8 bg-card border border-border p-5 rounded-2xl space-y-3">
-                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider mb-2">
+                      <GlassSurface level={2} className="col-span-12 md:col-span-8 p-5 space-y-3">
+                        <h3 className="text-xs font-bold text-[#1C2E24] dark:text-[#F4F7F5] uppercase tracking-wider mb-2">
                           6-Dimension Competency Benchmarks (You vs. Target)
                         </h3>
                         {careerReport.readiness?.scoreBreakdown &&
@@ -1557,33 +1310,33 @@ export default function App() {
                             ([key, val]: [string, any]) => (
                               <div key={key} className="space-y-1">
                                 <div className="flex justify-between text-xs">
-                                  <span className="capitalize font-semibold text-foreground">
+                                  <span className="capitalize font-semibold text-[#1C2E24] dark:text-[#F4F7F5]">
                                     {key.replace(/([A-Z])/g, " $1")}
                                   </span>
-                                  <span className="font-mono text-muted-foreground font-semibold">
-                                    {val}% <span className="text-[10px] text-muted-foreground">(Benchmark: 80%)</span>
+                                  <span className="font-mono text-[#556B5F] dark:text-[#95AFA1] font-semibold">
+                                    {val}% <span className="text-[10px] text-[#556B5F] dark:text-[#95AFA1]">(Benchmark: 80%)</span>
                                   </span>
                                 </div>
-                                <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+                                <div className="h-2 w-full bg-[#E8E4DC] dark:bg-[#1D2E24] rounded-full overflow-hidden">
                                   <div
-                                    className="h-full rounded-full transition-all duration-700"
+                                    className="h-full rounded-full transition-all duration-300"
                                     style={{
                                       width: `${val}%`,
-                                      background: val >= 80 ? "#059669" : val >= 70 ? "#4F46E5" : "#D97706",
+                                      background: val >= 80 ? "#4E7D63" : val >= 70 ? "#3B624E" : "#8C532B",
                                     }}
                                   />
                                 </div>
                               </div>
                             )
                           )}
-                      </div>
+                      </GlassSurface>
                     </div>
                   )}
 
                   {activeCareerTab === "skillgaps" && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {careerReport.skillGaps?.map((gap: any, i: number) => (
-                        <div key={i} className="bg-card border border-border p-4 rounded-xl space-y-2.5">
+                        <GlassSurface key={i} level={2} className="p-4 space-y-2.5">
                           <div className="flex items-start justify-between">
                             <div>
                               <h4 className="text-xs font-bold text-foreground">{gap.skill}</h4>
@@ -1591,15 +1344,13 @@ export default function App() {
                                 Current: {gap.currentLevel} ➔ Target: <strong className="text-primary">{gap.targetLevel}</strong>
                               </span>
                             </div>
-                            <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-secondary text-foreground uppercase">
-                              {gap.importance} Priority
-                            </span>
+                            <GlassBadge label={`${gap.importance} Priority`} variant="primary" />
                           </div>
                           <p className="text-xs text-muted-foreground leading-relaxed">{gap.reason}</p>
-                          <span className="text-[10px] font-semibold text-muted-foreground block">
+                          <span className="text-[10px] font-semibold text-muted-foreground block font-mono">
                             Est. Learning: {gap.estimatedLearningTime}
                           </span>
-                        </div>
+                        </GlassSurface>
                       ))}
                     </div>
                   )}
@@ -1607,29 +1358,29 @@ export default function App() {
                   {activeCareerTab === "roadmap" && (
                     <div className="space-y-3">
                       {careerReport.roadmap?.map((phase: any, i: number) => (
-                        <div key={i} className="bg-card border border-border p-4 rounded-xl space-y-2">
+                        <GlassSurface key={i} level={2} className="p-4 space-y-2">
                           <div className="flex items-center gap-2">
                             <span className="w-6 h-6 rounded-lg bg-primary text-white text-xs font-bold flex items-center justify-center">
                               {phase.phase}
                             </span>
                             <h4 className="text-xs font-bold text-foreground">{phase.title}</h4>
-                            <span className="text-[10px] text-muted-foreground ml-auto">{phase.duration}</span>
+                            <span className="text-[10px] text-muted-foreground ml-auto font-mono">{phase.duration}</span>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                            <div className="bg-secondary p-3 rounded-lg text-xs">
+                            <div className="bg-white/15 dark:bg-white/5 p-3 rounded-xl border border-white/10 text-xs backdrop-blur-md">
                               <span className="font-bold text-foreground block mb-1">Competencies:</span>
                               <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
                                 {phase.milestones?.map((m: string, idx: number) => <li key={idx}>{m}</li>)}
                               </ul>
                             </div>
-                            <div className="bg-secondary p-3 rounded-lg text-xs">
+                            <div className="bg-white/15 dark:bg-white/5 p-3 rounded-xl border border-white/10 text-xs backdrop-blur-md">
                               <span className="font-bold text-foreground block mb-1">Deliverables:</span>
                               <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
                                 {phase.deliverables?.map((d: string, idx: number) => <li key={idx}>{d}</li>)}
                               </ul>
                             </div>
                           </div>
-                        </div>
+                        </GlassSurface>
                       ))}
                     </div>
                   )}
@@ -1637,28 +1388,26 @@ export default function App() {
                   {activeCareerTab === "projects" && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {careerReport.projects?.map((proj: any, i: number) => (
-                        <div key={i} className="bg-card border border-border p-4 rounded-xl flex flex-col justify-between space-y-3">
+                        <GlassSurface key={i} level={2} className="p-4 flex flex-col justify-between space-y-3">
                           <div>
-                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-primary/10 text-primary">
-                              {proj.difficulty} • {proj.estimatedDuration}
-                            </span>
+                            <GlassBadge label={`${proj.difficulty} • ${proj.estimatedDuration}`} variant="primary" />
                             <h4 className="text-xs font-bold text-foreground mt-2">{proj.title}</h4>
                             <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{proj.whyRecommended}</p>
                           </div>
-                          <div className="pt-2 border-t border-border text-xs text-muted-foreground italic">
+                          <div className="pt-2 border-t border-white/10 text-xs text-muted-foreground italic">
                             "{proj.resumeValue}"
                           </div>
-                        </div>
+                        </GlassSurface>
                       ))}
                     </div>
                   )}
 
                   {activeCareerTab === "learningplan" && (
-                    <div className="bg-card border border-border p-5 rounded-2xl space-y-3">
+                    <GlassSurface level={2} className="p-5 space-y-3">
                       <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">30-Day Execution Schedule</h3>
                       <div className="space-y-2">
                         {careerReport.learningPlan?.map((plan: any, i: number) => (
-                          <div key={i} className="p-3 rounded-xl bg-secondary flex items-start gap-3 text-xs">
+                          <div key={i} className="p-3 rounded-xl bg-white/15 dark:bg-white/5 border border-white/10 flex items-start gap-3 text-xs backdrop-blur-md">
                             <span className="px-2 py-0.5 rounded-lg bg-primary text-white font-bold text-[10px]">
                               Day {plan.day}
                             </span>
@@ -1670,12 +1419,12 @@ export default function App() {
                           </div>
                         ))}
                       </div>
-                    </div>
+                    </GlassSurface>
                   )}
 
                   {activeCareerTab === "interview" && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-card border border-border p-5 rounded-2xl space-y-3">
+                      <GlassSurface level={2} className="p-5 space-y-3">
                         <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
                           <Code2 size={15} className="text-primary" />
                           <span>Interview Technical Focus</span>
@@ -1685,8 +1434,8 @@ export default function App() {
                             <li key={i}>{t}</li>
                           ))}
                         </ul>
-                      </div>
-                      <div className="bg-card border border-border p-5 rounded-2xl space-y-3">
+                      </GlassSurface>
+                      <GlassSurface level={2} className="p-5 space-y-3">
                         <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
                           <FolderGit2 size={15} className="text-primary" />
                           <span>GitHub & Portfolio Guidelines</span>
@@ -1696,7 +1445,7 @@ export default function App() {
                             <li key={i}>{tip}</li>
                           ))}
                         </ul>
-                      </div>
+                      </GlassSurface>
                     </div>
                   )}
                 </div>
@@ -1705,16 +1454,20 @@ export default function App() {
           )}
 
           {/* ══════════════════════════════════════════════════════════ */}
-          {/* VIEW 3: 4-YEAR ADAPTIVE STUDY ROADMAP & QUESTION ATTEMPTS  */}
+          {/* VIEW 3: VISUAL LEARNING JOURNEY ROADMAP                    */}
           {/* ══════════════════════════════════════════════════════════ */}
           {activeNav === "Roadmap" && (
-            <StudyRoadmap
+            <PersonalizedRoadmap
               topicMasteryMap={topicMasteryMap}
+              nextBestActions={nextBestActions}
               onRecordAttempt={handleRecordAttempt}
               onScheduleRevision={handleScheduleRevision}
               onNavigateToAI={(prompt) => {
                 setActiveNav("AI Tutor");
                 setAiInput(prompt);
+              }}
+              onNavigateToResources={(topicId) => {
+                setActiveNav("Resources");
               }}
             />
           )}
@@ -1769,13 +1522,14 @@ export default function App() {
           {/* ══════════════════════════════════════════════════════════ */}
           {activeNav === "Interview Practice" && (
             <div className="space-y-6">
-              <div className="bg-card border border-border rounded-2xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <GlassSurface level={2} className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <MessageSquare size={15} className="text-primary" />
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-primary">
-                      Meridian Mock Interview Studio
-                    </span>
+                    <GlassBadge
+                      label="Meridian Mock Interview Studio"
+                      variant="primary"
+                      icon={<MessageSquare size={13} />}
+                    />
                   </div>
                   <h1 className="text-xl font-black text-foreground">
                     Interactive Technical Interview Practice
@@ -1785,11 +1539,11 @@ export default function App() {
                   </p>
                 </div>
 
-                <button
+                <GlassButton
+                  variant="primary"
+                  size="md"
                   onClick={handleGenerateInterview}
                   disabled={interviewStatus === "loading"}
-                  className="px-5 py-2.5 rounded-xl font-bold text-xs text-white shadow-xs flex items-center gap-2 transition-all hover:opacity-95 disabled:opacity-70 cursor-pointer flex-shrink-0"
-                  style={{ background: "linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)" }}
                 >
                   {interviewStatus === "loading" ? (
                     <>
@@ -1802,30 +1556,49 @@ export default function App() {
                       <span>Generate Questions</span>
                     </>
                   )}
-                </button>
-              </div>
+                </GlassButton>
+              </GlassSurface>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-card border border-border p-4 rounded-xl">
+              {interviewStatus === "error" && (
+                <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-rose-500 backdrop-blur-md">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle size={14} className="text-rose-500 flex-shrink-0" />
+                    <span>{interviewError || "Unable to generate questions right now. Please try again."}</span>
+                  </div>
+                  <button
+                    onClick={handleGenerateInterview}
+                    className="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-bold text-[11px] cursor-pointer flex-shrink-0"
+                  >
+                    Retry Generation
+                  </button>
+                </div>
+              )}
+
+              <GlassSurface level={2} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4">
                 <div>
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase block mb-1">Role</label>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase block mb-1">Target Role</label>
                   <input
                     type="text"
                     value={interviewRole}
                     onChange={(e) => setInterviewRole(e.target.value)}
-                    className="w-full text-xs bg-secondary border border-border rounded-lg px-2.5 py-1.5 outline-none focus:border-primary text-foreground font-semibold"
+                    placeholder="e.g. Software Engineer / SDE-1"
+                    className="w-full text-xs bg-white/20 dark:bg-slate-900/60 border border-white/20 dark:border-white/10 rounded-xl px-3 py-2 outline-none focus:border-primary text-foreground font-semibold backdrop-blur-md"
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase block mb-1">Type</label>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase block mb-1">Interview Track</label>
                   <select
                     value={interviewType}
                     onChange={(e) => setInterviewType(e.target.value as any)}
-                    className="w-full text-xs bg-secondary border border-border rounded-lg px-2.5 py-1.5 outline-none focus:border-primary text-foreground font-semibold cursor-pointer"
+                    className="w-full text-xs bg-white/20 dark:bg-slate-900/60 border border-white/20 dark:border-white/10 rounded-xl px-3 py-2 outline-none focus:border-primary text-foreground font-semibold cursor-pointer backdrop-blur-md"
                   >
-                    <option value="technical">Technical</option>
-                    <option value="hr">HR / Behavioral</option>
-                    <option value="system_design">System Design</option>
-                    <option value="aptitude">Aptitude</option>
+                    <option value="technical" className="bg-slate-900 text-slate-100">Technical (General)</option>
+                    <option value="dsa" className="bg-slate-900 text-slate-100">DSA & Problem Solving</option>
+                    <option value="core_cs" className="bg-slate-900 text-slate-100">Core CS (OS, DBMS, CN)</option>
+                    <option value="system_design" className="bg-slate-900 text-slate-100">System Design & Architecture</option>
+                    <option value="oop" className="bg-slate-900 text-slate-100">Object-Oriented Design (OOP)</option>
+                    <option value="hr" className="bg-slate-900 text-slate-100">HR & Behavioral (STAR)</option>
+                    <option value="aptitude" className="bg-slate-900 text-slate-100">Aptitude & Logic</option>
                   </select>
                 </div>
                 <div>
@@ -1833,26 +1606,39 @@ export default function App() {
                   <select
                     value={interviewDifficulty}
                     onChange={(e) => setInterviewDifficulty(e.target.value as any)}
-                    className="w-full text-xs bg-secondary border border-border rounded-lg px-2.5 py-1.5 outline-none focus:border-primary text-foreground font-semibold cursor-pointer"
+                    className="w-full text-xs bg-white/20 dark:bg-slate-900/60 border border-white/20 dark:border-white/10 rounded-xl px-3 py-2 outline-none focus:border-primary text-foreground font-semibold cursor-pointer backdrop-blur-md"
                   >
-                    <option value="beginner">Beginner</option>
-                    <option value="intermediate">Intermediate</option>
-                    <option value="advanced">Advanced</option>
+                    <option value="beginner" className="bg-slate-900 text-slate-100">Beginner (Campus Intern)</option>
+                    <option value="intermediate" className="bg-slate-900 text-slate-100">Intermediate (SDE-1 / Tier-1)</option>
+                    <option value="advanced" className="bg-slate-900 text-slate-100">Advanced (FAANG / High-Scale)</option>
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase block mb-1">Count</label>
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase block mb-1">Question Count</label>
                   <select
                     value={interviewQuestionCount}
                     onChange={(e) => setInterviewQuestionCount(Number(e.target.value))}
-                    className="w-full text-xs bg-secondary border border-border rounded-lg px-2.5 py-1.5 outline-none focus:border-primary text-foreground font-semibold cursor-pointer"
+                    className="w-full text-xs bg-white/20 dark:bg-slate-900/60 border border-white/20 dark:border-white/10 rounded-xl px-3 py-2 outline-none focus:border-primary text-foreground font-semibold cursor-pointer backdrop-blur-md"
                   >
-                    <option value={2}>2 Questions</option>
-                    <option value={3}>3 Questions</option>
-                    <option value={5}>5 Questions</option>
+                    <option value={2} className="bg-slate-900 text-slate-100">2 Questions (Quick Sprint)</option>
+                    <option value={3} className="bg-slate-900 text-slate-100">3 Questions (Standard)</option>
+                    <option value={5} className="bg-slate-900 text-slate-100">5 Questions (Full Mock)</option>
+                    <option value={10} className="bg-slate-900 text-slate-100">10 Questions (Intensive)</option>
                   </select>
                 </div>
-              </div>
+              </GlassSurface>
+
+              {interviewStatus === "idle" && !interviewData && (
+                <GlassSurface level={1} className="p-8 text-center space-y-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary/15 text-primary mx-auto flex items-center justify-center">
+                    <Sparkles size={20} />
+                  </div>
+                  <h3 className="text-sm font-bold text-foreground">Ready for Your Mock Interview</h3>
+                  <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                    Select your desired interview track and click <strong>"Generate Questions"</strong> to simulate realistic placement screening rounds with instant AI evaluation.
+                  </p>
+                </GlassSurface>
+              )}
 
               {interviewData && interviewData.questions && (
                 <div className="space-y-4">
@@ -1862,19 +1648,17 @@ export default function App() {
                     const showHints = openHints[idx] || false;
 
                     return (
-                      <div key={idx} className="bg-card border border-border p-5 rounded-2xl space-y-3">
+                      <GlassSurface key={idx} level={2} className="p-5 space-y-3">
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-2">
                             <span className="w-5 h-5 rounded bg-primary text-white text-xs font-bold flex items-center justify-center">
                               {idx + 1}
                             </span>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-secondary text-foreground">
-                              {q.category || "Core"}
-                            </span>
+                            <GlassBadge label={q.category || "Core"} variant="primary" />
                           </div>
                           <button
                             onClick={() => setOpenHints((prev) => ({ ...prev, [idx]: !prev[idx] }))}
-                            className="text-[11px] font-bold text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer"
+                            className="text-[11px] font-bold text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer transition-colors"
                           >
                             <span>{showHints ? "Hide Key Points" : "View Key Points"}</span>
                             {showHints ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
@@ -1884,7 +1668,7 @@ export default function App() {
                         <h4 className="text-xs font-bold text-foreground leading-relaxed">{q.question}</h4>
 
                         {showHints && (
-                          <div className="bg-secondary p-3 rounded-xl text-xs text-muted-foreground space-y-1.5">
+                          <div className="bg-white/15 dark:bg-white/5 p-3.5 rounded-2xl text-xs text-muted-foreground space-y-1.5 border border-white/10 backdrop-blur-md">
                             {q.key_points_to_cover && (
                               <div>
                                 <span className="font-bold text-foreground">Key points to include:</span>
@@ -1905,38 +1689,39 @@ export default function App() {
                               setStudentAnswers((prev) => ({ ...prev, [idx]: text }));
                             }}
                             placeholder="Write your structured answer here..."
-                            className="w-full text-xs bg-secondary border border-border rounded-xl p-3 outline-none focus:border-primary text-foreground leading-relaxed"
+                            className="w-full text-xs bg-white/20 dark:bg-slate-900/60 border border-white/20 dark:border-white/10 rounded-2xl p-3.5 outline-none focus:border-primary text-foreground leading-relaxed backdrop-blur-md"
                           />
 
                           <div className="flex justify-end">
-                            <button
-                              onClick={() => handleEvaluateAnswer(idx, q.question)}
+                            <GlassButton
+                              variant="primary"
+                              size="sm"
                               disabled={isEvaluating || !(studentAnswers[idx] || "").trim()}
-                              className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-primary disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                              onClick={() => handleEvaluateAnswer(idx, q.question)}
                             >
                               {isEvaluating ? <RefreshCw size={12} className="animate-spin" /> : <Award size={12} />}
                               <span>{isEvaluating ? "Evaluating..." : "Get AI Feedback"}</span>
-                            </button>
+                            </GlassButton>
                           </div>
                         </div>
 
                         {evaluation && (
-                          <div className="bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl p-4 space-y-2 text-xs">
+                          <div className="bg-emerald-500/15 border border-emerald-500/30 rounded-2xl p-4 space-y-2 text-xs backdrop-blur-md">
                             <div className="flex items-center justify-between">
-                              <span className="font-bold text-emerald-900 dark:text-emerald-300">
+                              <span className="font-bold text-emerald-700 dark:text-emerald-300">
                                 AI Coaching Score: {evaluation.score}/100 ({evaluation.verdict})
                               </span>
                             </div>
                             {evaluation.feedback && (
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-muted-foreground">
                                 <div>
-                                  <span className="font-bold text-emerald-800 dark:text-emerald-400 block">✓ Strengths:</span>
+                                  <span className="font-bold text-emerald-600 dark:text-emerald-400 block">✓ Strengths:</span>
                                   <ul className="list-disc list-inside">
                                     {evaluation.feedback.strengths?.map((s: string, sIdx: number) => <li key={sIdx}>{s}</li>)}
                                   </ul>
                                 </div>
                                 <div>
-                                  <span className="font-bold text-amber-800 dark:text-amber-400 block">💡 Improvements:</span>
+                                  <span className="font-bold text-amber-600 dark:text-amber-400 block">💡 Improvements:</span>
                                   <ul className="list-disc list-inside">
                                     {evaluation.feedback.improvements?.map((imp: string, iIdx: number) => <li key={iIdx}>{imp}</li>)}
                                   </ul>
@@ -1945,7 +1730,7 @@ export default function App() {
                             )}
                           </div>
                         )}
-                      </div>
+                      </GlassSurface>
                     );
                   })}
                 </div>
@@ -1995,6 +1780,8 @@ export default function App() {
               onUpdateProfile={handleUpdateProfile}
             />
           )}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
     </div>

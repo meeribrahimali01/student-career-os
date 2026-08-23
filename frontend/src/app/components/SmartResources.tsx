@@ -7,303 +7,451 @@ import {
   Search,
   CheckCircle2,
   Clock,
-  Tag,
-  ArrowRight,
-  Filter,
   Bookmark,
+  Play,
+  Code2,
+  Star,
+  ArrowRight,
 } from "lucide-react";
 import { TopicMastery } from "../../data/studentIntelligence";
+import { GlassSurface, GlassButton, GlassBadge } from "./ui/LiquidGlass";
+import { MERIDIAN_STUDY_RESOURCES, SmartStudyResource } from "../../data/meridianStudyResourcesData";
 
 interface SmartResourcesProps {
-  topicMasteryMap: Record<string, TopicMastery>;
+  topicMasteryMap?: Record<string, TopicMastery>;
   onNavigateToRoadmap?: (topicId: string) => void;
 }
 
-interface ResourceItem {
-  id: string;
-  title: string;
-  category: string;
-  topicId?: string;
-  type: "Practice Sheet" | "Interactive Course" | "Documentation" | "Reference Book" | "Video Series";
-  difficulty: "Beginner" | "Intermediate" | "Advanced";
-  description: string;
-  url: string;
-  estimatedHours: number;
-  tags: string[];
-}
-
-const ALL_RESOURCES: ResourceItem[] = [
-  // ─── DATA STRUCTURES & ALGORITHMS ────────────────────────────────
-  {
-    id: "res_striver_dsa",
-    title: "Striver's A2Z DSA Course & Blind 75 Sheet",
-    category: "Data Structures",
-    topicId: "graphs",
-    type: "Practice Sheet",
-    difficulty: "Intermediate",
-    description: "Curated 75 core algorithmic patterns essential for FAANG and Tier-1 product tech screening rounds.",
-    url: "https://takeuforward.org/strivers-a2z-dsa-course/strivers-a2z-dsa-course-sheet-2/",
-    estimatedHours: 40,
-    tags: ["DSA", "Graphs", "LeetCode", "Dijkstra", "Topological Sort"],
-  },
-  {
-    id: "res_neetcode_dp",
-    title: "NeetCode 150: Dynamic Programming Patterns",
-    category: "Algorithms",
-    topicId: "dp",
-    type: "Interactive Course",
-    difficulty: "Advanced",
-    description: "Structured breakdown of 1D/2D DP, 0/1 Knapsack, Longest Common Subsequence, and DP on Trees.",
-    url: "https://neetcode.io/practice",
-    estimatedHours: 25,
-    tags: ["Dynamic Programming", "Knapsack", "LCS", "Memoization"],
-  },
-
-  // ─── OPERATING SYSTEMS ───────────────────────────────────────────
-  {
-    id: "res_ostep_os",
-    title: "Operating Systems: Three Easy Pieces (OSTEP)",
-    category: "Core CS",
-    topicId: "os",
-    type: "Reference Book",
-    difficulty: "Intermediate",
-    description: "Virtualization, concurrency primitives (locks, semaphores, condition variables), and file system internals.",
-    url: "https://pages.cs.wisc.edu/~remzi/OSTEP/",
-    estimatedHours: 30,
-    tags: ["OS", "Virtual Memory", "Deadlocks", "Concurrency", "Paging"],
-  },
-
-  // ─── DATABASE SYSTEMS ────────────────────────────────────────────
-  {
-    id: "res_postgres_internals",
-    title: "PostgreSQL Masterclass: Schema Design & Indexing",
-    category: "Databases",
-    topicId: "dbms",
-    type: "Documentation",
-    difficulty: "Intermediate",
-    description: "Relational modeling, B-tree indexes, execution plans (EXPLAIN ANALYZE), and ACID concurrency controls.",
-    url: "https://www.postgresql.org/docs/",
-    estimatedHours: 18,
-    tags: ["SQL", "PostgreSQL", "B+ Trees", "ACID", "Transactions"],
-  },
-
-  // ─── SYSTEM DESIGN & CLOUD ───────────────────────────────────────
-  {
-    id: "res_system_design_primer",
-    title: "System Design Primer & Scalability Patterns Guide",
-    category: "Architecture",
-    topicId: "system_design",
-    type: "Reference Book",
-    difficulty: "Advanced",
-    description: "Comprehensive visual guide on scaling web architectures, load balancers, caching, and sharding.",
-    url: "https://github.com/donnemartin/system-design-primer",
-    estimatedHours: 35,
-    tags: ["System Design", "Microservices", "Redis", "Kafka", "CAP"],
-  },
-
-  // ─── WEB DEVELOPMENT ─────────────────────────────────────────────
-  {
-    id: "res_react_docs",
-    title: "Official React & Next.js Architecture Documentation",
-    category: "Web Development",
-    topicId: "web_dev",
-    type: "Documentation",
-    difficulty: "Beginner",
-    description: "Modern component lifecycle, Server Actions, suspense boundaries, and rendering performance optimizations.",
-    url: "https://react.dev",
-    estimatedHours: 20,
-    tags: ["React", "TypeScript", "Frontend", "JavaScript"],
-  },
-];
-
-export default function SmartResources({ topicMasteryMap, onNavigateToRoadmap }: SmartResourcesProps) {
+export default function SmartResources({
+  topicMasteryMap = {},
+  onNavigateToRoadmap,
+}: SmartResourcesProps) {
+  const [selectedTopic, setSelectedTopic] = useState<string>("All");
+  const [selectedType, setSelectedType] = useState<string>("All");
+  const [selectedDifficulty, setSelectedDifficulty] = useState<string>("All");
+  const [selectedPlatform, setSelectedPlatform] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [bookmarkedIds, setBookmarkedIds] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("meridian_bookmarked_resources");
+        return saved ? JSON.parse(saved) : ["res_graph_abdul_bari", "res_sd_primer"];
+      } catch {
+        return ["res_graph_abdul_bari", "res_sd_primer"];
+      }
+    }
+    return ["res_graph_abdul_bari", "res_sd_primer"];
+  });
 
-  // Identify student's weak topics to generate recommended resources
+  const [visitedIds, setVisitedIds] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("meridian_visited_resources");
+        return saved ? JSON.parse(saved) : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  });
+
+  // Toggle Bookmark
+  const handleToggleBookmark = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = bookmarkedIds.includes(id)
+      ? bookmarkedIds.filter((item) => item !== id)
+      : [...bookmarkedIds, id];
+    setBookmarkedIds(updated);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("meridian_bookmarked_resources", JSON.stringify(updated));
+    }
+  };
+
+  // Open Link & Mark Visited
+  const handleOpenResource = (resource: SmartStudyResource) => {
+    if (!visitedIds.includes(resource.id)) {
+      const updated = [...visitedIds, resource.id];
+      setVisitedIds(updated);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("meridian_visited_resources", JSON.stringify(updated));
+      }
+    }
+    window.open(resource.url, "_blank", "noopener,noreferrer");
+  };
+
+  // Identify student's weak topics to prioritize
   const weakTopicIds = useMemo(() => {
-    return new Set(
-      Object.values(topicMasteryMap)
-        .filter((t) => t.status === "CRITICAL" || t.status === "WEAK")
-        .map((t) => t.topicId)
-    );
+    return Object.entries(topicMasteryMap)
+      .filter(([_, m]) => m.status === "CRITICAL" || m.status === "WEAK")
+      .map(([id]) => id);
   }, [topicMasteryMap]);
 
-  // Recommended Resources matching weak topics
-  const recommendedResources = useMemo(() => {
-    return ALL_RESOURCES.filter((r) => r.topicId && weakTopicIds.has(r.topicId));
-  }, [weakTopicIds]);
+  // Topic Options
+  const topicFilterOptions = [
+    { value: "All", label: "All Topics (41 Resources)" },
+    { value: "foundations", label: "Foundations & Memory" },
+    { value: "oop", label: "Object-Oriented Programming" },
+    { value: "dsa_linear", label: "Linear DSA" },
+    { value: "dsa_trees", label: "Trees & BST" },
+    { value: "dsa_graphs", label: "Graph Algorithms" },
+    { value: "dsa_dp", label: "Dynamic Programming" },
+    { value: "os", label: "Operating Systems" },
+    { value: "dbms", label: "Database Management" },
+    { value: "networks", label: "Computer Networks" },
+    { value: "system_design", label: "System Design" },
+    { value: "cloud_devops", label: "Cloud & DevOps" },
+    { value: "placement_sprints", label: "Placement Prep" },
+  ];
 
-  // Filtered Catalog
+  // Filtering Logic
   const filteredResources = useMemo(() => {
-    return ALL_RESOURCES.filter((r) => {
-      const matchCat = selectedCategory === "All" || r.category === selectedCategory;
-      const query = searchQuery.trim().toLowerCase();
-      const matchSearch =
-        !query ||
-        r.title.toLowerCase().includes(query) ||
-        r.description.toLowerCase().includes(query) ||
-        r.tags.some((t) => t.toLowerCase().includes(query));
-      return matchCat && matchSearch;
-    });
-  }, [selectedCategory, searchQuery]);
+    return MERIDIAN_STUDY_RESOURCES.filter((res) => {
+      if (selectedTopic !== "All" && res.topicId !== selectedTopic) return false;
+      if (selectedType !== "All" && res.type !== selectedType) return false;
+      if (selectedDifficulty !== "All" && res.difficulty !== selectedDifficulty) return false;
+      if (selectedPlatform !== "All" && res.platform !== selectedPlatform) return false;
 
-  const categories = ["All", "Data Structures", "Algorithms", "Core CS", "Databases", "Architecture", "Web Development"];
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchesTitle = res.title.toLowerCase().includes(q);
+        const matchesAuthor = res.authorOrChannel.toLowerCase().includes(q);
+        const matchesDesc = res.description.toLowerCase().includes(q);
+        const matchesTopic = res.topicName.toLowerCase().includes(q);
+        const matchesTags = res.tags.some((t) => t.toLowerCase().includes(q));
+        if (!matchesTitle && !matchesAuthor && !matchesDesc && !matchesTopic && !matchesTags) {
+          return false;
+        }
+      }
+      return true;
+    }).sort((a, b) => {
+      // Prioritize weak topics
+      const aIsWeak = weakTopicIds.includes(a.topicId);
+      const bIsWeak = weakTopicIds.includes(b.topicId);
+      if (aIsWeak && !bIsWeak) return -1;
+      if (!aIsWeak && bIsWeak) return 1;
+      return 0;
+    });
+  }, [selectedTopic, selectedType, selectedDifficulty, selectedPlatform, searchQuery, weakTopicIds]);
+
+  const youtubeCount = MERIDIAN_STUDY_RESOURCES.filter((r) => r.platform === "YouTube").length;
+  const codingCount = MERIDIAN_STUDY_RESOURCES.filter((r) => r.type === "Coding Platform" || r.type === "Practice Sheet").length;
+  const docsCount = MERIDIAN_STUDY_RESOURCES.filter((r) => r.type === "Documentation" || r.type === "Reference Book").length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* ══════════════════════════════════════════════════════════════ */}
-      {/* 1. HEADER & SMART WEAK-TOPIC RECOMMENDATION SHELF              */}
+      {/* 1. TOP HERO HEADER & METRICS                                   */}
       {/* ══════════════════════════════════════════════════════════════ */}
-      <div className="bg-card border border-border rounded-2xl p-6 shadow-xs space-y-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 flex items-center gap-1">
-              <Sparkles size={12} />
-              Intelligent Curated Resources
-            </span>
+      <GlassSurface level={2} className="p-5 space-y-3.5">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+          <div className="space-y-1 max-w-2xl">
+            <div className="flex items-center gap-2">
+              <GlassBadge
+                label="Verified Educational Ecosystem"
+                variant="primary"
+                icon={<Sparkles size={11} className="text-[#4E7D63]" />}
+              />
+              <span className="text-xs text-[#556B5F] dark:text-[#95AFA1] font-mono">Curated 4-Year Library</span>
+            </div>
+            <h1 className="text-xl lg:text-2xl font-bold text-[#1C2E24] dark:text-[#F4F7F5] tracking-tight">
+              Smart Study & Practice Resource Matrix
+            </h1>
+            <p className="text-xs text-[#556B5F] dark:text-[#95AFA1] leading-relaxed">
+              Every topic across your academic and placement roadmap is paired with verified documentation, masterclass video series (Abdul Bari, Striver, NeetCode), and interactive coding sheets.
+            </p>
           </div>
-          <h1 className="text-xl lg:text-2xl font-black text-foreground">Smart Study & Placement Resource Hub</h1>
-          <p className="text-xs text-muted-foreground max-w-2xl">
-            Targeted study guides, documentation, and practice sheets dynamically recommended based on your recent Quiz performance and Topic Mastery metrics.
-          </p>
+
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <div className="p-2.5 rounded-xl bg-[#FAF8F5] dark:bg-[#17241D] border border-[rgba(28,46,36,0.08)] text-center min-w-[80px]">
+              <span className="text-base font-bold text-[#1C2E24] dark:text-[#F4F7F5] font-mono block">{MERIDIAN_STUDY_RESOURCES.length}</span>
+              <span className="text-[9px] font-semibold text-[#556B5F] dark:text-[#95AFA1] uppercase">Resources</span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-[#FAF8F5] dark:bg-[#17241D] border border-[rgba(28,46,36,0.08)] text-center min-w-[80px]">
+              <span className="text-base font-bold text-[#4E7D63] dark:text-[#6E9B82] font-mono block">{youtubeCount}</span>
+              <span className="text-[9px] font-semibold text-[#556B5F] dark:text-[#95AFA1] uppercase">Video Series</span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-[#FAF8F5] dark:bg-[#17241D] border border-[rgba(28,46,36,0.08)] text-center min-w-[80px]">
+              <span className="text-base font-bold text-[#3B624E] dark:text-[#8EB7A0] font-mono block">{codingCount}</span>
+              <span className="text-[9px] font-semibold text-[#556B5F] dark:text-[#95AFA1] uppercase">Coding Sheets</span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-[#FAF8F5] dark:bg-[#17241D] border border-[rgba(28,46,36,0.08)] text-center min-w-[80px]">
+              <span className="text-base font-bold text-[#1C2E24] dark:text-[#F4F7F5] font-mono block">{docsCount}</span>
+              <span className="text-[9px] font-semibold text-[#556B5F] dark:text-[#95AFA1] uppercase">Docs & Books</span>
+            </div>
+          </div>
         </div>
 
-        {/* Dynamic Recommended Shelf for Weak Topics */}
-        {recommendedResources.length > 0 && (
-          <div className="pt-3 border-t border-border space-y-2.5">
+        {/* Personalized Focus Alert */}
+        {weakTopicIds.length > 0 && (
+          <div className="p-3 rounded-xl bg-[#EDF4F0] dark:bg-[#1E2F26] border border-[rgba(78,125,99,0.3)] flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-              <span className="text-xs font-bold text-foreground">
-                Recommended For Your Identified Weak Areas:
-              </span>
+              <span className="w-2 h-2 rounded-full bg-[#4E7D63] pulse-ai-dot" />
+              <p className="text-xs font-semibold text-[#1C2E24] dark:text-[#F4F7F5]">
+                <strong className="text-[#4E7D63] dark:text-[#6E9B82] font-bold">Targeted Recommendation:</strong> Weak topic signals in <strong className="underline decoration-[#4E7D63]/50">{weakTopicIds.map((t) => t.toUpperCase()).join(", ")}</strong>. High-yield diagnostic resources prioritized below.
+              </p>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {recommendedResources.map((rec) => {
-                const mastery = rec.topicId ? topicMasteryMap[rec.topicId] : null;
-                return (
-                  <div
-                    key={rec.id}
-                    className="p-3.5 rounded-xl bg-gradient-to-r from-rose-500/10 via-primary/10 to-indigo-500/10 border border-primary/20 flex flex-col justify-between space-y-2 shadow-2xs"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-primary">
-                          {rec.category} • {rec.type}
-                        </span>
-                        {mastery && (
-                          <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded">
-                            {mastery.topicName} ({mastery.masteryScore}% Accuracy)
-                          </span>
-                        )}
-                      </div>
-                      <h4 className="text-xs font-bold text-foreground mt-1">{rec.title}</h4>
-                      <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">{rec.description}</p>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-1">
-                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                        <Clock size={11} /> ~{rec.estimatedHours} hrs
-                      </span>
-                      <a
-                        href={rec.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-3 py-1 rounded-lg text-xs font-bold text-white bg-primary hover:opacity-90 flex items-center gap-1 cursor-pointer"
-                      >
-                        <span>Study Resource</span>
-                        <ExternalLink size={11} />
-                      </a>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            {onNavigateToRoadmap && (
+              <button
+                onClick={() => onNavigateToRoadmap(weakTopicIds[0])}
+                className="text-[11px] font-bold text-[#4E7D63] dark:text-[#6E9B82] hover:underline flex items-center gap-1 flex-shrink-0 cursor-pointer"
+              >
+                <span>View on Roadmap</span>
+                <ArrowRight size={12} />
+              </button>
+            )}
           </div>
         )}
-      </div>
+      </GlassSurface>
 
       {/* ══════════════════════════════════════════════════════════════ */}
-      {/* 2. SEARCH & ALL RESOURCES CATALOG                              */}
+      {/* 2. ADVANCED INTERACTIVE FILTERING BAR                          */}
       {/* ══════════════════════════════════════════════════════════════ */}
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          {/* Category Filter Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scroll">
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                  selectedCategory === cat
-                    ? "bg-primary text-primary-foreground shadow-xs"
-                    : "bg-card hover:bg-secondary text-muted-foreground border border-border"
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-
-          {/* Search Input */}
-          <div className="relative w-full sm:w-64">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+      <GlassSurface level={1} className="p-3.5 space-y-2.5">
+        <div className="flex flex-col md:flex-row items-center gap-2.5">
+          {/* Search Bar */}
+          <div className="relative flex-1 w-full">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#556B5F]" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search resources, topics..."
-              className="w-full bg-secondary border border-border rounded-xl pl-8 pr-3 py-1.5 text-xs outline-none focus:border-primary text-foreground"
+              placeholder="Search by topic, algorithm, author (Abdul Bari, Striver, NeetCode), or tag..."
+              className="w-full text-xs pl-9 pr-3.5 py-1.5 bg-[#FAF8F5] dark:bg-[#17241D] border border-[rgba(28,46,36,0.1)] dark:border-[rgba(244,247,245,0.08)] rounded-xl outline-none focus:border-[#4E7D63] text-[#1C2E24] dark:text-[#F4F7F5] placeholder:text-[#7C9184] transition-colors"
             />
           </div>
+
+          {/* Quick Clear */}
+          {(selectedTopic !== "All" || selectedType !== "All" || selectedDifficulty !== "All" || selectedPlatform !== "All" || searchQuery) && (
+            <button
+              onClick={() => {
+                setSelectedTopic("All");
+                setSelectedType("All");
+                setSelectedDifficulty("All");
+                setSelectedPlatform("All");
+                setSearchQuery("");
+              }}
+              className="px-3 py-1.5 text-xs font-semibold text-[#556B5F] hover:text-[#1C2E24] bg-[#E8E4DC] dark:bg-[#1D2E24] rounded-lg transition-colors cursor-pointer"
+            >
+              Reset Filters
+            </button>
+          )}
         </div>
 
-        {/* Resources Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredResources.map((res) => (
-            <div
-              key={res.id}
-              className="bg-card border border-border rounded-xl p-4 flex flex-col justify-between space-y-3 hover:border-primary/40 transition-all shadow-2xs"
+        {/* Multi-Row Filter Selects */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-0.5">
+          <div>
+            <label className="text-[9px] font-bold uppercase tracking-wider text-[#556B5F] dark:text-[#95AFA1] block mb-1">Topic</label>
+            <select
+              value={selectedTopic}
+              onChange={(e) => setSelectedTopic(e.target.value)}
+              className="w-full text-xs bg-[#FAF8F5] dark:bg-[#17241D] border border-[rgba(28,46,36,0.1)] rounded-lg px-2 py-1 outline-none focus:border-[#4E7D63] text-[#1C2E24] dark:text-[#F4F7F5] font-medium cursor-pointer"
             >
+              {topicFilterOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-[9px] font-bold uppercase tracking-wider text-[#556B5F] dark:text-[#95AFA1] block mb-1">Format</label>
+            <select
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value)}
+              className="w-full text-xs bg-[#FAF8F5] dark:bg-[#17241D] border border-[rgba(28,46,36,0.1)] rounded-lg px-2 py-1 outline-none focus:border-[#4E7D63] text-[#1C2E24] dark:text-[#F4F7F5] font-medium cursor-pointer"
+            >
+              <option value="All">All Formats</option>
+              <option value="Video Series">Video Series (YouTube)</option>
+              <option value="Documentation">Official Documentation</option>
+              <option value="Practice Sheet">Practice Sheet</option>
+              <option value="Coding Platform">Coding Platform</option>
+              <option value="Reference Book">Reference Book</option>
+              <option value="Interactive Course">Interactive Course</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-[9px] font-bold uppercase tracking-wider text-[#556B5F] dark:text-[#95AFA1] block mb-1">Difficulty</label>
+            <select
+              value={selectedDifficulty}
+              onChange={(e) => setSelectedDifficulty(e.target.value)}
+              className="w-full text-xs bg-[#FAF8F5] dark:bg-[#17241D] border border-[rgba(28,46,36,0.1)] rounded-lg px-2 py-1 outline-none focus:border-[#4E7D63] text-[#1C2E24] dark:text-[#F4F7F5] font-medium cursor-pointer"
+            >
+              <option value="All">All Levels</option>
+              <option value="Beginner">Beginner</option>
+              <option value="Intermediate">Intermediate</option>
+              <option value="Advanced">Advanced</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-[9px] font-bold uppercase tracking-wider text-[#556B5F] dark:text-[#95AFA1] block mb-1">Platform</label>
+            <select
+              value={selectedPlatform}
+              onChange={(e) => setSelectedPlatform(e.target.value)}
+              className="w-full text-xs bg-[#FAF8F5] dark:bg-[#17241D] border border-[rgba(28,46,36,0.1)] rounded-lg px-2 py-1 outline-none focus:border-[#4E7D63] text-[#1C2E24] dark:text-[#F4F7F5] font-medium cursor-pointer"
+            >
+              <option value="All">All Platforms</option>
+              <option value="YouTube">YouTube</option>
+              <option value="LeetCode">LeetCode</option>
+              <option value="Official Docs">Official Docs</option>
+              <option value="takeUforward">takeUforward / Striver</option>
+              <option value="NeetCode">NeetCode</option>
+              <option value="GeeksforGeeks">GeeksforGeeks</option>
+              <option value="GitHub">GitHub</option>
+              <option value="MIT OCW">MIT OCW</option>
+            </select>
+          </div>
+        </div>
+      </GlassSurface>
+
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {/* 3. RESOURCE CARDS GRID                                         */}
+      {/* ══════════════════════════════════════════════════════════════ */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {filteredResources.map((resource) => {
+          const isBookmarked = bookmarkedIds.includes(resource.id);
+          const isVisited = visitedIds.includes(resource.id);
+          const isWeakTopic = weakTopicIds.includes(resource.topicId);
+
+          return (
+            <GlassSurface
+              key={resource.id}
+              level={2}
+              className={`p-4 flex flex-col justify-between space-y-3 hover:border-[#4E7D63]/40 transition-all duration-150 group relative ${
+                isWeakTopic ? "ring-1 ring-[#4E7D63]/30" : ""
+              }`}
+            >
+              {/* Header Badges */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-secondary text-primary border border-border">
-                    {res.category}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground font-medium">{res.type}</span>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {/* Platform Tag */}
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 bg-[#FAF8F5] dark:bg-[#17241D] text-[#1C2E24] dark:text-[#F4F7F5] border border-[rgba(28,46,36,0.1)]">
+                      {resource.platform === "YouTube" && <Play size={10} className="fill-[#9E4D3B] text-[#9E4D3B]" />}
+                      {resource.platform === "LeetCode" && <Code2 size={10} className="text-[#8C532B]" />}
+                      {resource.platform}
+                    </span>
+
+                    {/* Difficulty Badge */}
+                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                      resource.difficulty === "Beginner"
+                        ? "bg-[#EDF4F0] text-[#3B624E]"
+                        : resource.difficulty === "Intermediate"
+                        ? "bg-[#FAF2EB] text-[#8C532B]"
+                        : "bg-[#F9EBE8] text-[#9E4D3B]"
+                    }`}>
+                      {resource.difficulty}
+                    </span>
+
+                    {/* Recommended Star */}
+                    {resource.isRecommended && (
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#FAF2EB] text-[#8C532B] flex items-center gap-0.5">
+                        <Star size={9} className="fill-[#8C532B]" />
+                        Featured
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Bookmark Button */}
+                  <button
+                    onClick={(e) => handleToggleBookmark(resource.id, e)}
+                    className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+                      isBookmarked
+                        ? "bg-[#EDF4F0] border-[#4E7D63] text-[#4E7D63]"
+                        : "bg-[#FAF8F5] border-[rgba(28,46,36,0.1)] text-[#556B5F] hover:text-[#1C2E24]"
+                    }`}
+                    title={isBookmarked ? "Remove Bookmark" : "Save Resource"}
+                  >
+                    <Bookmark size={13} className={isBookmarked ? "fill-[#4E7D63]" : ""} />
+                  </button>
                 </div>
 
-                <h3 className="text-xs font-bold text-foreground leading-snug">{res.title}</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{res.description}</p>
+                {/* Title */}
+                <div>
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-[#556B5F] dark:text-[#95AFA1] block mb-0.5">
+                    {resource.topicName}
+                  </span>
+                  <h3 className="text-sm font-bold text-[#1C2E24] dark:text-[#F4F7F5] group-hover:text-[#4E7D63] transition-colors leading-snug line-clamp-2">
+                    {resource.title}
+                  </h3>
+                </div>
 
-                <div className="flex flex-wrap gap-1 pt-1">
-                  {res.tags.map((tag, tIdx) => (
-                    <span key={tIdx} className="text-[9px] bg-secondary/80 text-muted-foreground px-1.5 py-0.5 rounded">
+                {/* Author & Hours */}
+                <div className="flex items-center gap-2 text-[11px] text-[#556B5F] dark:text-[#95AFA1] font-medium">
+                  <span>By <strong className="text-[#1C2E24] dark:text-[#F4F7F5] font-semibold">{resource.authorOrChannel}</strong></span>
+                  <span>•</span>
+                  <span className="flex items-center gap-1">
+                    <Clock size={11} />
+                    ~{resource.estimatedHours}h
+                  </span>
+                </div>
+
+                {/* Description */}
+                <p className="text-xs text-[#556B5F] dark:text-[#95AFA1] leading-relaxed line-clamp-3">
+                  {resource.description}
+                </p>
+
+                {/* Tags */}
+                <div className="flex flex-wrap gap-1 pt-0.5">
+                  {resource.tags.slice(0, 3).map((tag, tIdx) => (
+                    <span key={tIdx} className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-[#FAF8F5] dark:bg-[#17241D] text-[#556B5F] dark:text-[#95AFA1] border border-[rgba(28,46,36,0.08)]">
                       #{tag}
                     </span>
                   ))}
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-border flex items-center justify-between">
-                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                  <Clock size={12} /> ~{res.estimatedHours} hrs
+              {/* Action Buttons */}
+              <div className="pt-2.5 border-t border-[rgba(28,46,36,0.08)] dark:border-[rgba(244,247,245,0.08)] flex items-center justify-between gap-2">
+                <span className="text-[10px] font-semibold text-[#556B5F] flex items-center gap-1">
+                  {isVisited && (
+                    <>
+                      <CheckCircle2 size={12} className="text-[#4E7D63]" />
+                      <span className="text-[#4E7D63]">Opened</span>
+                    </>
+                  )}
                 </span>
-                <a
-                  href={res.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold text-foreground bg-secondary hover:bg-secondary/80 border border-border flex items-center gap-1 transition-all"
+
+                <GlassButton
+                  variant={resource.platform === "YouTube" ? "secondary" : "primary"}
+                  size="sm"
+                  onClick={() => handleOpenResource(resource)}
+                  className="flex items-center gap-1.5 group/btn"
                 >
-                  <span>Open Resource</span>
-                  <ExternalLink size={12} />
-                </a>
+                  <span>{resource.platform === "YouTube" ? "Watch Video" : resource.platform === "LeetCode" ? "Solve Problem" : "Open Resource"}</span>
+                  <ExternalLink size={11} className="group-hover/btn:translate-x-0.5 transition-transform" />
+                </GlassButton>
               </div>
-            </div>
-          ))}
-        </div>
+            </GlassSurface>
+          );
+        })}
       </div>
+
+      {/* Empty Filter State */}
+      {filteredResources.length === 0 && (
+        <GlassSurface level={1} className="p-10 text-center space-y-3">
+          <div className="w-10 h-10 rounded-xl bg-[#E8E4DC] dark:bg-[#1D2E24] mx-auto flex items-center justify-center text-[#556B5F]">
+            <BookOpen size={20} />
+          </div>
+          <h3 className="text-sm font-bold text-[#1C2E24] dark:text-[#F4F7F5]">No resources matched your active filters</h3>
+          <p className="text-xs text-[#556B5F] dark:text-[#95AFA1] max-w-sm mx-auto">
+            Try adjusting your search keywords, difficulty, or selecting "All Topics" to browse the full verified study matrix.
+          </p>
+          <GlassButton
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              setSelectedTopic("All");
+              setSelectedType("All");
+              setSelectedDifficulty("All");
+              setSelectedPlatform("All");
+              setSearchQuery("");
+            }}
+          >
+            Reset All Filters
+          </GlassButton>
+        </GlassSurface>
+      )}
     </div>
   );
 }

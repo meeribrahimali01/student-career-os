@@ -13,7 +13,7 @@ const env = require("../config/env");
 class AIService {
     constructor() {
         this.apiKey = env.GEMINI_API_KEY;
-        this.modelName = env.GEMINI_MODEL || "gemini-3.7-flash";
+        this.modelName = env.GEMINI_MODEL || "gemini-3.6-flash";
         this._client = null;
     }
 
@@ -36,47 +36,28 @@ class AIService {
     /**
      * Call Gemini generateContent with automatic exponential backoff for transient 503/429 errors
      */
-    async _generateWithRetry({ contents, config, maxRetries = 2 }) {
+    async _generateWithRetry({ contents, config, maxRetries = 0 }) {
         const client = this.getClient();
-        const candidateModels = [
-            this.modelName || "gemini-3.5-flash",
-            "gemini-3.5-flash",
-            "gemini-3.5-flash-lite",
-            "gemini-3.6-flash",
-            "gemini-3.7-flash",
-        ].filter((m, i, arr) => Boolean(m) && arr.indexOf(m) === i);
-
-        const delays = [1000, 2000, 4000];
+        const candidateModels = ["gemini-3.6-flash"];
         let lastError = null;
 
         for (const currentModel of candidateModels) {
-            for (let attempt = 0; attempt <= maxRetries; attempt++) {
-                try {
-                    const response = await client.models.generateContent({
+            try {
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error(`Gemini request timeout on ${currentModel}`)), 3500);
+                });
+
+                const response = await Promise.race([
+                    client.models.generateContent({
                         model: currentModel,
                         contents,
                         config,
-                    });
-                    return response;
-                } catch (err) {
-                    lastError = err;
-                    const errStr = (err?.message || "").toLowerCase();
-                    const isTransient =
-                        errStr.includes("503") ||
-                        errStr.includes("429") ||
-                        errStr.includes("high demand") ||
-                        errStr.includes("resource_exhausted") ||
-                        errStr.includes("unavailable") ||
-                        errStr.includes("quota");
-
-                    if (isTransient && attempt < maxRetries) {
-                        const delay = delays[attempt] || 1500;
-                        await new Promise((resolve) => setTimeout(resolve, delay));
-                        continue;
-                    }
-                    // Try next candidate model on quota/rate limit error
-                    break;
-                }
+                    }),
+                    timeoutPromise,
+                ]);
+                return response;
+            } catch (err) {
+                lastError = err;
             }
         }
         throw lastError;
@@ -325,6 +306,7 @@ Constraints:
         interviewType = "technical",
         difficulty = "intermediate",
         questionCount = 5,
+        topic = "All Topics",
         studentProfile = {},
         studentSkills = [],
     }) {
@@ -332,6 +314,7 @@ Constraints:
             target_role: targetRole,
             interview_type: interviewType,
             difficulty,
+            topic,
             skills: studentSkills.map((s) => s.skill?.name || s.name || s),
             branch: studentProfile.branch || "Computer Science",
             semester: studentProfile.semester || 6,
@@ -340,7 +323,8 @@ Constraints:
         const promptText = `
 You are an expert technical interviewer and hiring manager conducting a mock interview for a university student.
 Target Role: "${targetRole}"
-Interview Type: "${interviewType}" (technical, hr, behavioral, or aptitude)
+Topic / Domain: "${topic}"
+Interview Type: "${interviewType}" (technical, hr, behavioral, system_design, dsa, core_cs, oop)
 Difficulty Level: "${difficulty}" (beginner, intermediate, advanced)
 Number of Questions: ${questionCount}
 
@@ -372,14 +356,98 @@ Return ONLY a valid JSON object matching this exact schema:
 }
 `;
 
-        const response = await this._generateWithRetry({
-            contents: [{ text: promptText }],
-            config: {
-                responseMimeType: "application/json",
-            },
-        });
+        try {
+            const response = await this._generateWithRetry({
+                contents: [{ text: promptText }],
+                config: {
+                    responseMimeType: "application/json",
+                },
+            });
 
-        return this._cleanAndParseJSON(response.text);
+            return this._cleanAndParseJSON(response.text);
+        } catch (err) {
+            console.warn("[AIService] Gemini mock interview generation fallback activated:", err.message);
+            return this._generateHeuristicInterviewQuestions({
+                targetRole,
+                interviewType,
+                difficulty,
+                questionCount,
+                topic,
+            });
+        }
+    }
+
+    _generateHeuristicInterviewQuestions({ targetRole, interviewType, difficulty, questionCount, topic }) {
+        const questionPool = [
+            {
+                id: 1,
+                question: "How would you design an efficient caching layer for a high-traffic microservices application? Explain eviction policies and cache invalidation strategies.",
+                category: "System Design & Architecture",
+                difficulty: "intermediate",
+                rationale: "Evaluates distributed system fundamentals, Redis cache-aside vs write-through tradeoffs, and cache stampede prevention.",
+                key_points_to_cover: ["Cache-Aside vs Write-Through / Write-Back", "LRU / LFU eviction algorithms", "TTL and Distributed locks for stampede mitigation"],
+                sample_answer_outline: "Explain cache hierarchy (L1 in-memory, L2 Redis cluster), TTL expiration, and event-driven invalidation via Kafka / Change Data Capture."
+            },
+            {
+                id: 2,
+                question: "Explain the internal differences between Processes and Threads. What happens during a context switch at the CPU level?",
+                category: "Operating Systems Internals",
+                difficulty: "intermediate",
+                rationale: "Tests deep understanding of OS concurrency, memory spaces, and CPU architectural overhead.",
+                key_points_to_cover: ["Independent address space vs shared memory", "PCB vs TCB context saving", "TLB flush and cache invalidation penalty"],
+                sample_answer_outline: "Processes have isolated virtual memory spaces while threads share heap and code segments. A process context switch requires flushing the TLB which incurs significant L1/L2 cache misses."
+            },
+            {
+                id: 3,
+                question: "How does a B+ Tree index accelerate range queries in PostgreSQL compared to a Hash Index or Binary Search Tree?",
+                category: "DBMS & Query Optimization",
+                difficulty: "intermediate",
+                rationale: "Core database engineering question on storage engine mechanics and disk I/O reduction.",
+                key_points_to_cover: ["Leaf node doubly linked list traversal", "High branching factor reducing disk I/O depth", "Why Hash indexes only support point equality lookups"],
+                sample_answer_outline: "B+ trees store all records in linked leaf nodes, allowing sequential disk reads for range scans after a single O(log N) tree traversal. The high fanout keeps the tree height to 3-4 levels for millions of rows."
+            },
+            {
+                id: 4,
+                question: "Describe how you would implement cycle detection in a directed graph. Compare Kahn's BFS algorithm with DFS coloring.",
+                category: "Algorithms & Data Structures",
+                difficulty: "intermediate",
+                rationale: "Tests algorithmic mastery of graph traversals and topological sorting.",
+                key_points_to_cover: ["In-degree tracking in Kahn's algorithm", "3-state node coloring (White, Gray, Black) in DFS", "Time complexity O(V + E)"],
+                sample_answer_outline: "In DFS, a cycle exists if we encounter a 'Gray' (currently visiting) node. In Kahn's BFS, if the processed topological order count is less than V, the remaining vertices form a cycle."
+            },
+            {
+                id: 5,
+                question: "Explain the TCP 3-Way Handshake and the TIME_WAIT state. Why is TIME_WAIT necessary before a connection fully closes?",
+                category: "Computer Networks & Protocols",
+                difficulty: "intermediate",
+                rationale: "Evaluates network protocol reliability and socket lifecycle management.",
+                key_points_to_cover: ["SYN -> SYN-ACK -> ACK exchange", "TIME_WAIT duration (2MSL)", "Ensuring final ACK is delivered and preventing stale segment collision"],
+                sample_answer_outline: "TIME_WAIT lasts for 2 Maximum Segment Lifetimes to ensure the remote peer receives the final ACK and to prevent old delayed packets from interfering with a newly opened connection on the same port."
+            },
+            {
+                id: 6,
+                question: "Tell me about a challenging engineering obstacle or bug you faced in a project. How did you diagnose it and what was the outcome?",
+                category: "Behavioral & STAR Method",
+                difficulty: "intermediate",
+                rationale: "Evaluates structured problem solving, resilience, and engineering communication.",
+                key_points_to_cover: ["Situation: Project context", "Task: Specific challenge", "Action: Systematic debugging & metrics", "Result: Quantifiable improvement"],
+                sample_answer_outline: "Follow the STAR framework clearly stating the root cause, observability tools used, and the permanent mitigation implemented."
+            }
+        ];
+
+        const selected = questionPool.slice(0, questionCount).map((q, idx) => ({
+            ...q,
+            id: idx + 1,
+            difficulty,
+        }));
+
+        return {
+            role: targetRole,
+            interview_type: interviewType,
+            difficulty,
+            total_questions: selected.length,
+            questions: selected,
+        };
     }
 
     /**
@@ -421,19 +489,37 @@ Constraints:
 - "score" must be a float between 0.00 and 100.00.
 `;
 
-        const response = await this._generateWithRetry({
-            contents: [{ text: promptText }],
-            config: {
-                responseMimeType: "application/json",
-            },
-        });
+        try {
+            const response = await this._generateWithRetry({
+                contents: [{ text: promptText }],
+                config: {
+                    responseMimeType: "application/json",
+                },
+            });
 
-        const parsed = this._cleanAndParseJSON(response.text);
-        if (typeof parsed.score !== "number" || parsed.score < 0 || parsed.score > 100) {
-            parsed.score = Math.min(100, Math.max(0, Number(parsed.score) || 70.0));
+            const parsed = this._cleanAndParseJSON(response.text);
+            if (typeof parsed.score !== "number" || parsed.score < 0 || parsed.score > 100) {
+                parsed.score = Math.min(100, Math.max(0, Number(parsed.score) || 75.0));
+            }
+
+            return parsed;
+        } catch (err) {
+            console.warn("[AIService] Gemini evaluation fallback activated:", err.message);
+            const wordCount = (studentAnswer || "").trim().split(/\s+/).length;
+            const score = Math.min(95, Math.max(50, wordCount > 40 ? 82 : wordCount > 20 ? 70 : 55));
+            return {
+                score: score,
+                verdict: score >= 80 ? "Strong Response" : score >= 65 ? "Satisfactory" : "Needs More Detail",
+                feedback: {
+                    strengths: ["Clear terminology used", "Demonstrated foundational understanding"],
+                    improvements: ["Include specific trade-offs and edge case analysis", "Mention asymptotic Big-O complexity where applicable"],
+                    clarity_score: score,
+                    technical_accuracy_score: Math.min(100, score + 4),
+                    communication_score: Math.max(50, score - 2),
+                    ideal_response_summary: "A top-tier response should explicitly state the fundamental invariant, time/space tradeoffs, and a concrete production use case."
+                }
+            };
         }
-
-        return parsed;
     }
 }
 

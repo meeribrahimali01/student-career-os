@@ -42,6 +42,7 @@ import {
   CAMPUS_LAKE,
   findShortestPath,
 } from "../../data/campusMapData";
+import { GlassSurface, GlassButton, GlassBadge, GlassDivider } from "./ui/LiquidGlass";
 
 interface CampusMapProps {
   initialLocationId?: string | null;
@@ -210,14 +211,15 @@ export default function CampusMap({ initialLocationId, onNavigateToTutor }: Camp
       {/* ══════════════════════════════════════════════════════════════ */}
       {/* 1. TOP HEADER & OFFICIAL WAYFINDER BAR                         */}
       {/* ══════════════════════════════════════════════════════════════ */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-card border border-border p-4 rounded-2xl shadow-xs">
+      <GlassSurface level={2} className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-5">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-extrabold tracking-wider uppercase px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 flex items-center gap-1">
-              <Compass size={12} className="animate-spin-slow" />
-              VIT Chennai Campus Wayfinding
-            </span>
-            <span className="text-xs text-muted-foreground">Vandalur - Kelambakkam Road, Chennai</span>
+            <GlassBadge
+              label="VIT Chennai Campus Wayfinding"
+              variant="primary"
+              icon={<Compass size={12} className="animate-spin-slow" />}
+            />
+            <span className="text-xs text-muted-foreground font-mono">Vandalur - Kelambakkam Road, Chennai</span>
           </div>
           <h1 className="text-xl lg:text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
             <span>VIT Chennai Campus Navigator</span>
@@ -229,47 +231,41 @@ export default function CampusMap({ initialLocationId, onNavigateToTutor }: Camp
 
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Geolocation Button */}
-          <button
+          <GlassButton
+            variant={userLocationState.active ? "primary" : "secondary"}
+            size="sm"
             onClick={handleRequestLocation}
             disabled={userLocationState.loading}
-            className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
-              userLocationState.active
-                ? "bg-primary/10 border-primary/30 text-primary"
-                : "bg-secondary hover:bg-secondary/80 border-border text-foreground"
-            }`}
             title="Use My Location"
           >
             <Navigation size={13} className={userLocationState.loading ? "animate-spin" : ""} />
             <span>{userLocationState.loading ? "Locating..." : "Use My Location"}</span>
-          </button>
+          </GlassButton>
 
           {/* Toggle Directions Mode */}
-          <button
+          <GlassButton
+            variant={isRoutingMode ? "primary" : "secondary"}
+            size="sm"
             onClick={() => setIsRoutingMode((prev) => !prev)}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-              isRoutingMode
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "bg-secondary hover:bg-secondary/80 border border-border text-foreground"
-            }`}
           >
             <Route size={14} />
             <span>{isRoutingMode ? "Exit Directions" : "Get Directions"}</span>
-          </button>
+          </GlassButton>
 
           {/* Official 3D WayFinder External Trigger */}
           <a
             href="http://chennaiwayfinder.vit.ac.in/"
             target="_blank"
             rel="noopener noreferrer"
-            className="px-4 py-2 rounded-xl text-xs font-bold text-white shadow-xs flex items-center gap-1.5 transition-all hover:opacity-95 cursor-pointer"
-            style={{ background: "linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)" }}
+            className="px-4 py-2 rounded-xl text-xs font-bold text-white shadow-md flex items-center gap-1.5 transition-all hover:opacity-95 cursor-pointer backdrop-blur-md"
+            style={{ background: "linear-gradient(135deg, #1E40AF 0%, #4F46E5 100%)" }}
           >
             <Sparkles size={13} />
             <span>Open Official 3D WayFinder</span>
             <ExternalLink size={12} className="opacity-80" />
           </a>
         </div>
-      </div>
+      </GlassSurface>
 
       {/* Geolocation Notice Banner (if active) */}
       {userLocationState.message && (
@@ -700,10 +696,10 @@ export default function CampusMap({ initialLocationId, onNavigateToTutor }: Camp
         <div className="lg:col-span-4 flex flex-col gap-4">
           {/* ─── DIRECTIONS PANEL (When active) ─── */}
           {isRoutingMode ? (
-            <div className="bg-card border border-border rounded-2xl p-5 shadow-xs space-y-4">
-              <div className="flex items-center justify-between border-b border-border pb-3">
+            <GlassSurface level={2} className="p-5 space-y-4">
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+                  <div className="w-8 h-8 rounded-xl bg-primary/15 text-primary flex items-center justify-center font-bold">
                     <Route size={16} />
                   </div>
                   <div>
@@ -713,7 +709,7 @@ export default function CampusMap({ initialLocationId, onNavigateToTutor }: Camp
                 </div>
                 <button
                   onClick={() => setIsRoutingMode(false)}
-                  className="w-7 h-7 rounded-lg hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
+                  className="w-7 h-7 rounded-xl hover:bg-white/20 dark:hover:bg-white/10 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
                 >
                   <X size={15} />
                 </button>
@@ -726,10 +722,10 @@ export default function CampusMap({ initialLocationId, onNavigateToTutor }: Camp
                   <select
                     value={routeStartId}
                     onChange={(e) => setRouteStartId(e.target.value)}
-                    className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-xs font-semibold text-foreground outline-none focus:border-primary"
+                    className="w-full bg-white/20 dark:bg-slate-900/60 border border-white/20 dark:border-white/10 rounded-xl px-3 py-2 text-xs font-semibold text-foreground outline-none focus:border-primary backdrop-blur-md"
                   >
                     {CAMPUS_LOCATIONS.map((loc) => (
-                      <option key={loc.id} value={loc.id}>
+                      <option key={loc.id} value={loc.id} className="bg-slate-900 text-slate-100">
                         {loc.name}
                       </option>
                     ))}
@@ -743,7 +739,7 @@ export default function CampusMap({ initialLocationId, onNavigateToTutor }: Camp
                       setRouteStartId(routeTargetId);
                       setRouteTargetId(temp);
                     }}
-                    className="w-7 h-7 rounded-full bg-secondary border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-primary/10 transition-colors cursor-pointer shadow-xs"
+                    className="w-7 h-7 rounded-full bg-white/20 dark:bg-white/10 border border-white/20 dark:border-white/10 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-primary/20 transition-colors cursor-pointer shadow-xs"
                     title="Swap Route"
                   >
                     <ArrowRightLeft size={12} />
@@ -755,10 +751,10 @@ export default function CampusMap({ initialLocationId, onNavigateToTutor }: Camp
                   <select
                     value={routeTargetId}
                     onChange={(e) => setRouteTargetId(e.target.value)}
-                    className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-xs font-semibold text-foreground outline-none focus:border-primary"
+                    className="w-full bg-white/20 dark:bg-slate-900/60 border border-white/20 dark:border-white/10 rounded-xl px-3 py-2 text-xs font-semibold text-foreground outline-none focus:border-primary backdrop-blur-md"
                   >
                     {CAMPUS_LOCATIONS.map((loc) => (
-                      <option key={loc.id} value={loc.id}>
+                      <option key={loc.id} value={loc.id} className="bg-slate-900 text-slate-100">
                         {loc.name}
                       </option>
                     ))}
@@ -768,8 +764,8 @@ export default function CampusMap({ initialLocationId, onNavigateToTutor }: Camp
 
               {/* Route Summary */}
               {activeRoute && (
-                <div className="bg-secondary/60 border border-border rounded-xl p-3.5 space-y-3">
-                  <div className="grid grid-cols-2 gap-2 text-center border-b border-border/60 pb-2.5">
+                <div className="bg-white/15 dark:bg-black/20 border border-white/10 rounded-2xl p-3.5 space-y-3 backdrop-blur-md">
+                  <div className="grid grid-cols-2 gap-2 text-center border-b border-white/10 pb-2.5">
                     <div>
                       <span className="text-[10px] font-bold text-muted-foreground uppercase block">Walking Distance</span>
                       <span className="text-sm font-black text-foreground">{activeRoute.distanceMeters} m</span>
@@ -796,12 +792,12 @@ export default function CampusMap({ initialLocationId, onNavigateToTutor }: Camp
                   </div>
                 </div>
               )}
-            </div>
+            </GlassSurface>
           ) : null}
 
           {/* ─── LOCATION DETAILS CARD ─── */}
           {selectedLocation ? (
-            <div className="bg-card border border-border rounded-2xl p-5 shadow-xs space-y-4 flex-1 flex flex-col justify-between">
+            <GlassSurface level={2} className="p-5 space-y-4 flex-1 flex flex-col justify-between">
               <div className="space-y-4">
                 {/* Header */}
                 <div className="flex items-start justify-between gap-3">
@@ -821,7 +817,7 @@ export default function CampusMap({ initialLocationId, onNavigateToTutor }: Camp
                 </div>
 
                 {/* Description */}
-                <p className="text-xs text-foreground/80 leading-relaxed bg-secondary/40 p-3 rounded-xl border border-border">
+                <p className="text-xs text-foreground/80 leading-relaxed bg-white/15 dark:bg-white/5 p-3 rounded-xl border border-white/10 backdrop-blur-md">
                   {selectedLocation.description}
                 </p>
 
@@ -851,7 +847,7 @@ export default function CampusMap({ initialLocationId, onNavigateToTutor }: Camp
                     <span className="text-[11px] font-bold text-foreground block">Floor Directory</span>
                     <div className="space-y-1 max-h-36 overflow-y-auto no-scroll pr-1">
                       {selectedLocation.floors.map((floor, idx) => (
-                        <div key={idx} className="text-[11px] text-muted-foreground bg-secondary/60 px-2.5 py-1 rounded-lg border border-border/50">
+                        <div key={idx} className="text-[11px] text-muted-foreground bg-white/10 dark:bg-black/20 px-2.5 py-1 rounded-lg border border-white/10 backdrop-blur-xs">
                           {floor}
                         </div>
                       ))}
@@ -866,7 +862,7 @@ export default function CampusMap({ initialLocationId, onNavigateToTutor }: Camp
                     {selectedLocation.facilities.map((fac, idx) => (
                       <span
                         key={idx}
-                        className="text-[10px] font-semibold bg-secondary px-2 py-0.5 rounded-md border border-border text-foreground"
+                        className="text-[10px] font-semibold bg-white/15 dark:bg-white/5 px-2 py-0.5 rounded-md border border-white/10 text-foreground"
                       >
                         {fac}
                       </span>
@@ -876,30 +872,31 @@ export default function CampusMap({ initialLocationId, onNavigateToTutor }: Camp
               </div>
 
               {/* Action Buttons */}
-              <div className="pt-3 border-t border-border flex flex-col sm:flex-row gap-2">
-                <button
+              <div className="pt-3 border-t border-white/10 flex flex-col sm:flex-row gap-2">
+                <GlassButton
+                  variant="primary"
+                  size="md"
                   onClick={() => handleStartNavigationTo(selectedLocation.id)}
-                  className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white shadow-xs flex items-center justify-center gap-2 transition-all hover:opacity-95 cursor-pointer"
-                  style={{ background: "linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)" }}
+                  className="flex-1"
                 >
                   <Route size={14} />
                   <span>Get Directions Here</span>
-                </button>
+                </GlassButton>
 
                 <a
                   href={`http://chennaiwayfinder.vit.ac.in/`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="py-2.5 px-3 rounded-xl text-xs font-bold bg-secondary hover:bg-secondary/80 border border-border text-foreground flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                  className="py-2 px-3 rounded-xl text-xs font-bold bg-white/15 dark:bg-white/5 hover:bg-white/25 border border-white/15 dark:border-white/10 text-foreground flex items-center justify-center gap-1.5 transition-all cursor-pointer backdrop-blur-md"
                 >
                   <ExternalLink size={13} />
                   <span>3D View</span>
                 </a>
               </div>
-            </div>
+            </GlassSurface>
           ) : (
-            <div className="bg-card border border-border rounded-2xl p-6 flex flex-col items-center justify-center text-center space-y-3 flex-1">
-              <div className="w-12 h-12 rounded-2xl bg-secondary flex items-center justify-center text-muted-foreground">
+            <GlassSurface level={2} className="p-6 flex flex-col items-center justify-center text-center space-y-3 flex-1">
+              <div className="w-12 h-12 rounded-2xl bg-white/15 dark:bg-white/5 flex items-center justify-center text-muted-foreground">
                 <MapPin size={24} />
               </div>
               <div className="space-y-1">
@@ -908,12 +905,12 @@ export default function CampusMap({ initialLocationId, onNavigateToTutor }: Camp
                   Click any marker or building on the map to view floor directories, facilities, and walking routes.
                 </p>
               </div>
-            </div>
+            </GlassSurface>
           )}
 
           {/* AI Mentor Assistant Prompt Banner */}
           {onNavigateToTutor && (
-            <div className="bg-gradient-to-r from-primary/10 via-purple-500/10 to-indigo-500/10 border border-primary/20 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-xs">
+            <GlassSurface level={3} className="p-4 flex items-center justify-between gap-3 shadow-md">
               <div className="space-y-0.5">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-primary flex items-center gap-1">
                   <Sparkles size={11} />
@@ -921,14 +918,15 @@ export default function CampusMap({ initialLocationId, onNavigateToTutor }: Camp
                 </span>
                 <p className="text-xs font-medium text-foreground">Have questions about lab timings or department locations?</p>
               </div>
-              <button
+              <GlassButton
+                variant="primary"
+                size="sm"
                 onClick={onNavigateToTutor}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:opacity-90 transition-all flex items-center gap-1 flex-shrink-0 cursor-pointer"
               >
                 <span>Ask AI Tutor</span>
                 <ChevronRight size={13} />
-              </button>
-            </div>
+              </GlassButton>
+            </GlassSurface>
           )}
         </div>
       </div>

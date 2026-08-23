@@ -203,23 +203,37 @@ class AIController {
         try {
             const studentId = req.body.student_id || req.body.studentId || req.user?.student?.id;
             const targetRole = req.body.target_role || req.body.targetRole || "Software Engineer";
-            const interviewType = req.body.interview_type || req.body.interviewType || "technical";
-            const difficulty = req.body.difficulty || "intermediate";
+            let interviewType = (req.body.interview_type || req.body.interviewType || "technical").toLowerCase();
+            let difficulty = (req.body.difficulty || "intermediate").toLowerCase();
             const questionCount = Number(req.body.question_count || req.body.questionCount) || 5;
+            const topic = req.body.topic || req.body.topicId || "All Topics";
 
-            const validInterviewTypes = ["technical", "hr", "behavioral", "aptitude", "system_design"];
-            if (!validInterviewTypes.includes(interviewType)) {
-                return sendError(res, `Invalid interview_type. Allowed: ${validInterviewTypes.join(", ")}`, 400);
-            }
+            // Normalize difficulty
+            if (difficulty === "easy") difficulty = "beginner";
+            else if (difficulty === "medium") difficulty = "intermediate";
+            else if (difficulty === "hard") difficulty = "advanced";
 
             const validDifficulties = ["beginner", "intermediate", "advanced"];
             if (!validDifficulties.includes(difficulty)) {
-                return sendError(res, `Invalid difficulty. Allowed: ${validDifficulties.join(", ")}`, 400);
+                difficulty = "intermediate";
             }
 
-            if (!isNumberInRange(questionCount, 1, 15)) {
-                return sendError(res, "question_count must be between 1 and 15", 400);
+            const validInterviewTypes = [
+                "technical",
+                "hr",
+                "behavioral",
+                "aptitude",
+                "system_design",
+                "dsa",
+                "core_cs",
+                "mixed",
+                "oop"
+            ];
+            if (!validInterviewTypes.includes(interviewType)) {
+                interviewType = "technical";
             }
+
+            const clampedQuestionCount = Math.min(20, Math.max(1, questionCount));
 
             let studentProfile = {};
             let studentSkills = [];
@@ -237,7 +251,8 @@ class AIController {
                 targetRole: targetRole.trim(),
                 interviewType,
                 difficulty,
-                questionCount,
+                questionCount: clampedQuestionCount,
+                topic,
                 studentProfile,
                 studentSkills,
             });

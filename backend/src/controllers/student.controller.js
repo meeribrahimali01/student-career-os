@@ -6,6 +6,37 @@ const { isValidUUID, validateRequiredFields, isNumberInRange } = require("../uti
  * Student Controller - Handles request validation and responses for Student endpoints
  */
 class StudentController {
+    async getMyProfile(req, res, next) {
+        try {
+            const userId = req.user?.id;
+            const email = req.user?.email || "";
+            const fullName = req.user?.profile?.full_name || email.split("@")[0];
+
+            if (!userId) {
+                return sendError(res, "Unauthorized", 401);
+            }
+
+            const student = await studentService.getOrCreateStudentByUserId(userId, email, fullName);
+            return sendSuccess(res, student);
+        } catch (err) {
+            next(err);
+        }
+    }
+
+    async updateMyProfile(req, res, next) {
+        try {
+            const userId = req.user?.id;
+            if (!userId) {
+                return sendError(res, "Unauthorized", 401);
+            }
+
+            const updated = await studentService.updateProfileAndStudent(userId, req.body || {});
+            return sendSuccess(res, updated, 200);
+        } catch (err) {
+            next(err);
+        }
+    }
+
     async getStudentById(req, res, next) {
         try {
             const { id } = req.params;
